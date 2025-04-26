@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Cámara y Visor 3D</title>
+  <title>Cámara y Visor 3D (Prueba Object URL)</title>
   <style>
     /* Reset y Estilos Base */
     * {
@@ -258,6 +258,7 @@
         /* Transición suave para transformaciones (opcional) */
         /* transition: transform 0.1s ease-out; */
         will-change: transform; /* Optimización para animación */
+        background-color: #111; /* Fondo oscuro por si la imagen no carga */
     }
 
     #leftImage {
@@ -272,8 +273,6 @@
     #closeViewerBtn {
         /* Usa la clase genérica .close-btn */
     }
-
-
   </style>
 </head>
 <body>
@@ -320,7 +319,7 @@
   // --- Elementos DOM ---
   const mainInterface = document.getElementById('mainInterface');
   const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
+  const canvas = document.getElementById('canvas'); // Canvas para tomar fotos
   const progress = document.getElementById('progress');
   const startBtn = document.getElementById('startBtn');
   const visualizeBtn = document.getElementById('visualizeBtn');
@@ -351,12 +350,26 @@
   let isPanning = false;
   let isZooming = false;
   let startX, startY, initialPinchDistance;
-  let initialTranslateX = 0, initialTranslateY = 0; // Guardar estado al inicio del gesto
+  let initialTranslateX = 0, initialTranslateY = 0;
+
+  // --- Gestión de Object URLs ---
+  let objectURLsToRevoke = [];
+
+  function revokePreviousObjectURLs() {
+    if (objectURLsToRevoke.length > 0) {
+        console.log("Revocando", objectURLsToRevoke.length, "Object URLs anteriores.");
+        objectURLsToRevoke.forEach(url => {
+            // console.log("Revocando:", url.substring(0, 100)); // Log detallado opcional
+            URL.revokeObjectURL(url);
+        });
+        objectURLsToRevoke = []; // Limpiar la lista
+    }
+  }
 
 
   // --- Funciones Cámara ---
   function triggerFlash() {
-      flashOverlay.style.display = 'block'; // Asegurar visibilidad antes de añadir clase
+      flashOverlay.style.display = 'block';
       flashOverlay.classList.add('flash');
   }
 
@@ -371,7 +384,7 @@
         stream = mediaStream;
         video.srcObject = stream;
         video.style.display = 'block';
-        initialButtonsContainer.style.display = 'none'; // Ocultar botones iniciales
+        initialButtonsContainer.style.display = 'none';
         takeFirstPhotoBtn.style.display = 'block';
         takeSecondPhotoBtn.style.display = 'none';
         controlsContainer.style.display = 'flex';
@@ -404,22 +417,23 @@
     startCamera();
   }
 
+  // --- Modificado resetUI para revocar URLs ---
   function resetUI() {
       stopCamera();
+      revokePreviousObjectURLs(); // Revocar URLs al resetear
       video.style.display = 'block';
-      initialButtonsContainer.style.display = 'flex'; // Mostrar botones iniciales
+      initialButtonsContainer.style.display = 'flex';
       takeFirstPhotoBtn.style.display = 'none';
       takeSecondPhotoBtn.style.display = 'none';
       progress.innerText = '';
       resultModal.style.display = 'none';
-      imageViewer.style.display = 'none'; // Ocultar visor si estaba abierto
+      imageViewer.style.display = 'none'; // Ocultar visor
       mainInterface.style.display = 'flex'; // Mostrar interfaz principal
       controlsContainer.style.display = 'flex';
       firstImageData = null;
       flashOverlay.style.display = 'none';
       flashOverlay.classList.remove('flash');
-      // Resetear estado del visor
-      resetViewerState();
+      resetViewerState(); // Resetear estado del visor (zoom/pan/src)
   }
 
   // --- Funciones Visor de Imágenes ---
@@ -429,8 +443,9 @@
     currentTranslateX = 0;
     currentTranslateY = 0;
     applyTransform(); // Aplica el estado reseteado
-    leftImage.src = ''; // Limpiar imágenes
-    rightImage.src = '';
+    // Limpiar imágenes del visor (src se limpia en resetUI al revocar)
+    // leftImage.removeAttribute('src');
+    // rightImage.removeAttribute('src');
     fileInput.value = null; // Permitir seleccionar el mismo archivo de nuevo
   }
 
@@ -440,59 +455,119 @@
       rightImage.style.transform = transformValue;
   }
 
+  // --- INICIO: VERSIÓN DE PRUEBA handleFileSelect (Object URL / toBlob) ---
   function handleFileSelect(event) {
-      const file = event.target.files[0];
-      if (!file || !file.type.startsWith('image/')) {
-          alert('Por favor, selecciona un archivo de imagen.');
-          return;
-      }
+    console.log("handleFileSelect llamado (Prueba Object URL)");
+    const file = event.target.files[0];
+    if (!file || !file.type.startsWith('image/')) {
+        alert('Por favor, selecciona un archivo de imagen.');
+        resetUI(); return;
+    }
+    console.log("Archivo seleccionado:", file.name, file.type);
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-          const img = new Image();
-          img.onload = function() {
-              // Calcular dimensiones
-              const fullWidth = img.naturalWidth;
-              const halfWidth = fullWidth / 2;
-              const height = img.naturalHeight;
+    // Revoke any URLs created from the previous image viewing session
+    revokePreviousObjectURLs();
 
-              // Crear canvas temporal para la mitad izquierda
-              const canvasLeft = document.createElement('canvas');
-              canvasLeft.width = halfWidth;
-              canvasLeft.height = height;
-              const ctxLeft = canvasLeft.getContext('2d');
-              ctxLeft.drawImage(img, 0, 0, halfWidth, height, 0, 0, halfWidth, height);
+    // Crear un Object URL para el *archivo original* seleccionado
+    let originalFileURL = null;
+    try {
+        originalFileURL = URL.createObjectURL(file);
+        objectURLsToRevoke.push(originalFileURL); // Add to list for future cleanup
+        console.log("Original File Object URL creado:", originalFileURL.substring(0, 100));
+    } catch (error) {
+        console.error("Error creando Object URL para el archivo original:", error);
+        alert("Error al crear URL para el archivo.");
+        resetUI();
+        return;
+    }
 
-              // Crear canvas temporal para la mitad derecha
-              const canvasRight = document.createElement('canvas');
-              canvasRight.width = halfWidth;
-              canvasRight.height = height;
-              const ctxRight = canvasRight.getContext('2d');
-              ctxRight.drawImage(img, halfWidth, 0, halfWidth, height, 0, 0, halfWidth, height);
 
-              // Asignar a los elementos img del visor
-              leftImage.src = canvasLeft.toDataURL();
-              rightImage.src = canvasRight.toDataURL();
+    const img = new Image();
+    img.onload = function() {
+        console.log("Image onload. Dimensiones:", img.naturalWidth, "x", img.naturalHeight);
+        try {
+            // --- PRUEBA: Dibuja la imagen COMPLETA en UN canvas ---
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            if (!tempCtx) throw new Error("No se pudo obtener contexto 2D");
 
-              // Mostrar el visor y ocultar la interfaz principal
-              resetViewerState(); // Asegura estado inicial limpio
-              imageViewer.style.display = 'block';
-              mainInterface.style.display = 'none';
-          }
-          img.onerror = function() {
-              alert('Error al cargar la imagen.');
-              resetUI();
-          }
-          img.src = e.target.result;
-      }
-      reader.onerror = function() {
-          alert('Error al leer el archivo.');
-          resetUI();
-      }
-      reader.readAsDataURL(file);
-  }
+            if (img.naturalWidth <= 0 || img.naturalHeight <= 0) {
+                throw new Error("Dimensiones de imagen inválidas: " + img.naturalWidth + "x" + img.naturalHeight);
+            }
 
-  // --- Manejo Táctil del Visor ---
+            tempCanvas.width = img.naturalWidth;
+            tempCanvas.height = img.naturalHeight;
+
+            console.log("Dibujando imagen completa en canvas temporal...");
+            tempCtx.drawImage(img, 0, 0); // Dibuja la imagen completa
+            console.log("Dibujo completo.");
+
+            // --- CAMBIO: Convertir canvas a Blob (asíncrono) ---
+            console.log("Llamando a canvas.toBlob() para generar JPEG...");
+            tempCanvas.toBlob(function(blob) {
+                // --- Este código se ejecuta DESPUÉS de que toBlob termine ---
+                if (!blob) {
+                    console.error("canvas.toBlob() falló - no se generó blob.");
+                    alert("Error: No se pudo convertir el canvas a blob.");
+                    // No llamar a resetUI aquí directamente podría ser mejor
+                    // para evitar revocar la URL original si aún se necesita.
+                    // Quizás solo ocultar el visor si ya estaba visible.
+                    imageViewer.style.display = 'none';
+                    mainInterface.style.display = 'flex';
+                    return;
+                }
+                console.log("canvas.toBlob() exitoso. Tipo de Blob:", blob.type, "Tamaño:", blob.size);
+
+                // --- CAMBIO: Crear Object URL desde el Blob del canvas ---
+                let canvasBlobURL = null;
+                 try {
+                    canvasBlobURL = URL.createObjectURL(blob);
+                    objectURLsToRevoke.push(canvasBlobURL); // Add to list for future cleanup
+                    console.log("Canvas Blob Object URL creado:", canvasBlobURL.substring(0, 100));
+                 } catch(error) {
+                     console.error("Error creando Object URL desde el blob del canvas:", error);
+                     alert("Error al crear URL para la imagen procesada.");
+                     // No llamar a resetUI aquí
+                     imageViewer.style.display = 'none';
+                     mainInterface.style.display = 'flex';
+                     return;
+                 }
+
+
+                // --- Asigna ESTE Object URL a AMBAS mitades ---
+                console.log("Asignando Object URL del canvas a las imágenes del visor...");
+                leftImage.src = canvasBlobURL;
+                rightImage.src = canvasBlobURL; // Usar la misma URL para la prueba
+
+                // --- Mostrar Visor ---
+                console.log("Mostrando el visor con imagen de prueba (Object URL)...");
+                resetViewerState(); // Aplica transformaciones iniciales (scale 1, translate 0)
+                imageViewer.style.display = 'block';
+                mainInterface.style.display = 'none';
+
+            }, 'image/jpeg', 0.8); // Especificar tipo y calidad para toBlob
+
+        } catch(error) {
+             console.error("Error durante la prueba de canvas único (Object URL):", error);
+             alert("Error al procesar la imagen (prueba Object URL): " + error.message);
+             resetUI(); // Aquí sí reseteamos porque falló antes del paso asíncrono
+        }
+        // No poner código aquí que dependa del resultado de toBlob
+    } // Fin img.onload
+
+    img.onerror = function(e) {
+        console.error("Image onerror al cargar desde:", originalFileURL ? originalFileURL.substring(0,100) : "URL inválida");
+        alert('Error: No se pudo cargar la imagen fuente seleccionada desde Object URL.');
+        resetUI(); // Llama a resetUI que también revocará la URL fallida si existe
+    }
+    // Asigna la URL del *archivo original* al src de la imagen temporal
+    console.log("Asignando Object URL del archivo original a img.src");
+    img.src = originalFileURL; // Cargar imagen desde el Object URL del archivo
+}
+  // --- FIN: VERSIÓN DE PRUEBA handleFileSelect (Object URL / toBlob) ---
+
+
+  // --- Manejo Táctil del Visor (Sin cambios respecto a la versión anterior) ---
   function getDistance(touches) {
       const dx = touches[0].clientX - touches[1].clientX;
       const dy = touches[0].clientY - touches[1].clientY;
@@ -507,81 +582,52 @@
   }
 
   splitViewContainer.addEventListener('touchstart', (e) => {
-      e.preventDefault(); // Prevenir scroll/zoom del navegador
+      e.preventDefault();
       const touches = e.touches;
-
       if (touches.length === 1) {
           isPanning = true;
           isZooming = false;
           startX = touches[0].clientX;
           startY = touches[0].clientY;
-          // Guardar el estado actual de traslación al iniciar el paneo
           initialTranslateX = currentTranslateX;
           initialTranslateY = currentTranslateY;
-
       } else if (touches.length === 2) {
           isZooming = true;
           isPanning = false;
           initialPinchDistance = getDistance(touches);
-          // Guardar el estado actual de escala y traslación al iniciar el zoom
-          // (la traslación también se afecta por el origen del zoom)
-          // Considerar el punto medio como origen para calcular nueva traslación
-          // Más simple: guardar el estado actual y calcular deltas
           initialTranslateX = currentTranslateX;
           initialTranslateY = currentTranslateY;
-          // No es necesario guardar initialScale aquí si calculamos el ratio
+          // Guardamos la escala inicial para calcular el ratio relativo
+          // startScale = currentScale; // Necesitaríamos esto para un cálculo preciso del ratio
       }
   }, { passive: false });
 
   splitViewContainer.addEventListener('touchmove', (e) => {
       e.preventDefault();
       const touches = e.touches;
-
       if (isPanning && touches.length === 1) {
           const dx = touches[0].clientX - startX;
           const dy = touches[0].clientY - startY;
-          // Nueva traslación = inicial + delta
           currentTranslateX = initialTranslateX + dx;
           currentTranslateY = initialTranslateY + dy;
           applyTransform();
-
       } else if (isZooming && touches.length === 2) {
           const currentDistance = getDistance(touches);
-          if (initialPinchDistance <= 0) return; // Evitar división por cero
-
+          if (initialPinchDistance <= 0) return;
           const scaleRatio = currentDistance / initialPinchDistance;
-          const newScale = Math.max(1, currentScale * scaleRatio); // Escala mínima 1x
 
-          // --- Ajuste de traslación para hacer zoom desde el centro del gesto ---
-          // 1. Punto medio actual del gesto
-          const currentMidpoint = getMidpoint(touches);
+          // Aplicar ratio a la escala actual (puede causar aceleración, ver nota anterior)
+          let potentialNewScale = currentScale * scaleRatio;
 
-          // 2. Calcular cuánto se movió el contenido debido al escalado puro
-          //    (Vector desde el centro (0,0) al punto medio, escalado)
-          //    No es tan simple, necesitamos considerar la traslación actual.
-          //    Un enfoque más robusto:
-          //    - Posición del punto medio en coordenadas del contenido (antes de escalar)
-          //    - Posición del punto medio en coordenadas del contenido (después de escalar)
-          //    - Calcular la diferencia y ajustar la traslación para compensar.
+          // Clamp scale (e.g., between 1x and 10x)
+          potentialNewScale = Math.max(1, Math.min(potentialNewScale, 10));
 
-          // *** Simplificación (Zoom desde el centro del contenedor por ahora) ***
-          // Para hacer zoom desde el centro del gesto, la matemática es más compleja.
-          // Por simplicidad inicial, escalaremos y permitiremos panear después.
-          // O, podemos intentar un cálculo básico de ajuste:
-          const dx = currentMidpoint.x - (splitViewContainer.offsetWidth / 2);
-          const dy = currentMidpoint.y - (splitViewContainer.offsetHeight / 2);
+          // Ajuste de traslación para zoom desde el centro (omitido por simplicidad)
 
-          // Ajustar la traslación basada en cómo cambia la escala
-          // Esta parte es compleja y puede necesitar ajustes finos
-          // currentTranslateX = initialTranslateX * scaleRatio + dx * (1 - scaleRatio);
-          // currentTranslateY = initialTranslateY * scaleRatio + dy * (1 - scaleRatio);
+          currentScale = potentialNewScale;
 
-          // **** Mantenimiento Simple: Escala y permite panear ****
-           currentScale = newScale; // Aplicar nueva escala
-          // La traslación se maneja por separado al arrastrar (o al inicio del zoom)
-          // Re-calcular initialPinchDistance para el siguiente movimiento
-          initialPinchDistance = currentDistance;
-
+          // Actualizar initialPinchDistance para el siguiente evento move
+          initialPinchDistance = currentDistance; // Mantiene la lógica anterior
 
           applyTransform();
       }
@@ -595,8 +641,7 @@
       if (touches.length < 1) {
           isPanning = false;
       } else if (touches.length === 1) {
-           // Si estábamos haciendo zoom y soltamos un dedo, iniciamos paneo desde ahí
-           if(isZooming) {
+           if(!isPanning) {
                 isPanning = true;
                 isZooming = false;
                 startX = touches[0].clientX;
@@ -605,15 +650,17 @@
                 initialTranslateY = currentTranslateY;
            }
       }
-
+      if (!isZooming) {
+          initialPinchDistance = 0;
+      }
   });
 
 
-  // --- Event Listeners Botones ---
+  // --- Event Listeners Botones (Sin cambios) ---
   startBtn.onclick = requestPermissionAndStart;
-  visualizeBtn.onclick = () => fileInput.click(); // Abre el selector de archivos
-  fileInput.onchange = handleFileSelect; // Procesa el archivo seleccionado
-  closeViewerBtn.onclick = resetUI; // Cierra el visor
+  visualizeBtn.onclick = () => fileInput.click();
+  fileInput.onchange = handleFileSelect; // Llama a la versión de prueba Object URL
+  closeViewerBtn.onclick = resetUI; // Llama a resetUI que revoca URLs
 
   takeFirstPhotoBtn.onclick = () => {
     triggerFlash();
@@ -640,8 +687,8 @@
         combinedCtx.drawImage(img2, img1.width, 0);
         const combinedImageURL = combinedCanvas.toDataURL('image/jpeg');
 
-        resultImage.src = combinedImageURL; // Imagen para el modal de resultado
-        resultModal.style.display = 'flex'; // Muestra el modal de resultado
+        resultImage.src = combinedImageURL;
+        resultModal.style.display = 'flex';
         progress.innerText = '';
         takeSecondPhotoBtn.style.display = 'none';
       };
@@ -650,21 +697,21 @@
     img1.src = firstImageData;
   };
 
+  // Modificado para llamar a resetUI
   closeResultModalBtn.onclick = () => {
-    resetUI(); // Cierra el modal de resultado y resetea
+    resetUI();
   };
 
-  // Cerrar modal de resultado si se hace clic fuera (opcional)
+  // Modificado para llamar a resetUI
   window.onclick = (event) => {
     if (event.target == resultModal) {
        resetUI();
     }
-    // No cerramos el visor de fotos al hacer clic fuera, solo con el botón X
   };
 
   saveBtn.onclick = () => {
     const link = document.createElement('a');
-    link.href = resultImage.src; // Guarda la imagen del modal de resultado
+    link.href = resultImage.src;
     link.download = 'foto-3d-captura.jpg';
     document.body.appendChild(link);
     link.click();
