@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Cámara y Visor 3D (Prueba Object URL)</title>
-  <style>
+  <title>Cámara y Visor 3D</title> <style>
     /* Reset y Estilos Base */
     * {
       box-sizing: border-box;
@@ -235,16 +234,15 @@
         height: 100dvh;
         background-color: #000;
         z-index: 2000; /* Encima de todo lo demás */
-        /* Forzar gestos de pinch/pan en este contenedor */
-        touch-action: none;
+        touch-action: none; /* Prevenir gestos por defecto */
     }
 
     #splitViewContainer {
         position: relative; /* Contenedor para imágenes absolutas */
         width: 100%;
         height: 100%;
-        overflow: hidden; /* Clave para el efecto zoom/pan */
-        display: flex; /* Aunque usemos absoluto, flex ayuda inicialmente */
+        overflow: hidden; /* ! importante para ocultar lo que sobresale ! */
+        /* display: flex; */ /* No necesario si hijos son absolutos */
     }
 
     #leftImage, #rightImage {
@@ -252,13 +250,11 @@
         top: 0;
         height: 100%; /* Ocupa toda la altura */
         width: 50%; /* Cada una ocupa la mitad del ancho */
-        object-fit: cover; /* Cubre su 50% de espacio */
-        /* Origen de la transformación para zoom centrado */
-        transform-origin: center center;
-        /* Transición suave para transformaciones (opcional) */
-        /* transition: transform 0.1s ease-out; */
-        will-change: transform; /* Optimización para animación */
-        background-color: #111; /* Fondo oscuro por si la imagen no carga */
+        object-fit: cover; /* Cubre su 50% de espacio, puede cortar bordes */
+        /* object-fit: contain; */ /* Muestra imagen completa dentro del 50%, puede dejar barras */
+        transform-origin: center center; /* Zoom desde el centro */
+        will-change: transform; /* Optimización */
+        background-color: #111; /* Fondo por si acaso */
     }
 
     #leftImage {
@@ -359,7 +355,6 @@
     if (objectURLsToRevoke.length > 0) {
         console.log("Revocando", objectURLsToRevoke.length, "Object URLs anteriores.");
         objectURLsToRevoke.forEach(url => {
-            // console.log("Revocando:", url.substring(0, 100)); // Log detallado opcional
             URL.revokeObjectURL(url);
         });
         objectURLsToRevoke = []; // Limpiar la lista
@@ -444,20 +439,39 @@
     currentTranslateY = 0;
     applyTransform(); // Aplica el estado reseteado
     // Limpiar imágenes del visor (src se limpia en resetUI al revocar)
-    // leftImage.removeAttribute('src');
+    // leftImage.removeAttribute('src'); // Ya no es necesario aquí
     // rightImage.removeAttribute('src');
     fileInput.value = null; // Permitir seleccionar el mismo archivo de nuevo
   }
 
   function applyTransform() {
       const transformValue = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
+      // Aplicar la MISMA transformación a ambas imágenes
       leftImage.style.transform = transformValue;
       rightImage.style.transform = transformValue;
   }
 
-  // --- INICIO: VERSIÓN DE PRUEBA handleFileSelect (Object URL / toBlob) ---
-  function handleFileSelect(event) {
-    console.log("handleFileSelect llamado (Prueba Object URL)");
+  // --- Helper para convertir canvas a Blob con Promise ---
+  function canvasToBlob(canvas, mimeType = 'image/jpeg', quality = 0.85) {
+    return new Promise((resolve, reject) => {
+        if (!canvas.toBlob) {
+            reject(new Error("Canvas.toBlob() no soportado por el navegador."));
+            return;
+        }
+        canvas.toBlob(blob => {
+            if (blob) {
+                resolve(blob);
+            } else {
+                reject(new Error("canvas.toBlob() falló, devolvió null. Verifica dimensiones del canvas ("+ canvas.width + "x" + canvas.height +")."));
+            }
+        }, mimeType, quality);
+    });
+  }
+
+
+  // --- INICIO: handleFileSelect (Split con Object URL / toBlob) ---
+  async function handleFileSelect(event) { // Marcar como async para usar await
+    console.log("handleFileSelect llamado (Split con Object URL)");
     const file = event.target.files[0];
     if (!file || !file.type.startsWith('image/')) {
         alert('Por favor, selecciona un archivo de imagen.');
@@ -465,106 +479,113 @@
     }
     console.log("Archivo seleccionado:", file.name, file.type);
 
-    // Revoke any URLs created from the previous image viewing session
-    revokePreviousObjectURLs();
+    revokePreviousObjectURLs(); // Limpiar URLs anteriores
 
-    // Crear un Object URL para el *archivo original* seleccionado
     let originalFileURL = null;
     try {
         originalFileURL = URL.createObjectURL(file);
-        objectURLsToRevoke.push(originalFileURL); // Add to list for future cleanup
+        objectURLsToRevoke.push(originalFileURL); // Añadir a la lista para revocar después
         console.log("Original File Object URL creado:", originalFileURL.substring(0, 100));
     } catch (error) {
         console.error("Error creando Object URL para el archivo original:", error);
         alert("Error al crear URL para el archivo.");
-        resetUI();
-        return;
+        resetUI(); return;
     }
 
-
     const img = new Image();
-    img.onload = function() {
+    img.onload = async () => { // Marcar como async para usar await dentro
         console.log("Image onload. Dimensiones:", img.naturalWidth, "x", img.naturalHeight);
-        try {
-            // --- PRUEBA: Dibuja la imagen COMPLETA en UN canvas ---
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
-            if (!tempCtx) throw new Error("No se pudo obtener contexto 2D");
 
-            if (img.naturalWidth <= 0 || img.naturalHeight <= 0) {
-                throw new Error("Dimensiones de imagen inválidas: " + img.naturalWidth + "x" + img.naturalHeight);
+        // Validar dimensiones
+        if (img.naturalWidth <= 0 || img.naturalHeight <= 0) {
+             console.error("Dimensiones de imagen inválidas detectadas en onload.");
+             alert("Las dimensiones de la imagen son inválidas.");
+             resetUI(); return; // Salir temprano
+        }
+
+        // Validar ancho mínimo para poder dividir
+        if (img.naturalWidth < 2) {
+            alert("La imagen es demasiado estrecha para dividirse.");
+            resetUI(); return;
+        }
+
+        try {
+            // --- Preparar Canvas Izquierdo ---
+            const canvasLeft = document.createElement('canvas');
+            const ctxLeft = canvasLeft.getContext('2d');
+            if (!ctxLeft) throw new Error("No se pudo obtener contexto 2D izquierdo");
+
+            const leftWidth = Math.floor(img.naturalWidth / 2);
+            const height = img.naturalHeight;
+            canvasLeft.width = leftWidth;
+            canvasLeft.height = height;
+            console.log("Dibujando mitad izquierda (Ancho:", leftWidth, "Alto:", height,")");
+            ctxLeft.drawImage(img, 0, 0, leftWidth, height, 0, 0, leftWidth, height);
+
+            // --- Preparar Canvas Derecho ---
+            const canvasRight = document.createElement('canvas');
+            const ctxRight = canvasRight.getContext('2d');
+            if (!ctxRight) throw new Error("No se pudo obtener contexto 2D derecho");
+
+            const rightWidth = img.naturalWidth - leftWidth; // Ancho restante exacto
+            const sourceXRight = leftWidth; // Punto X donde empieza la mitad derecha
+            canvasRight.width = rightWidth;
+            canvasRight.height = height;
+            console.log("Dibujando mitad derecha (Ancho:", rightWidth, "Alto:", height, "Desde X:", sourceXRight,")");
+            ctxRight.drawImage(img, sourceXRight, 0, rightWidth, height, 0, 0, rightWidth, height);
+
+            // --- Convertir AMBOS canvas a Blob concurrentemente usando Promise.all ---
+            console.log("Convirtiendo ambos canvas a Blobs (JPEG)...");
+            // Ajusta la calidad si es necesario
+            const [blobLeft, blobRight] = await Promise.all([
+                canvasToBlob(canvasLeft, 'image/jpeg', 0.85), // Usar helper Promise
+                canvasToBlob(canvasRight, 'image/jpeg', 0.85)
+            ]);
+            console.log("Blobs generados. Izquierdo:", blobLeft.size, "bytes, Derecho:", blobRight.size, "bytes");
+
+
+            // --- Crear Object URLs desde los Blobs ---
+            let leftBlobURL = null;
+            let rightBlobURL = null;
+            try {
+                leftBlobURL = URL.createObjectURL(blobLeft);
+                objectURLsToRevoke.push(leftBlobURL); // Track for revocation
+                rightBlobURL = URL.createObjectURL(blobRight);
+                objectURLsToRevoke.push(rightBlobURL); // Track for revocation
+                console.log("Object URLs de Blobs creados. Izquierda:", leftBlobURL.substring(0,100), " Derecha:", rightBlobURL.substring(0,100));
+            } catch (error) {
+                 console.error("Error creando Object URLs desde Blobs:", error);
+                 alert("Error al crear URLs para las imágenes procesadas.");
+                 resetUI(); return;
             }
 
-            tempCanvas.width = img.naturalWidth;
-            tempCanvas.height = img.naturalHeight;
+            // --- Asignar URLs y Mostrar Visor ---
+            console.log("Asignando Object URLs a las imágenes del visor...");
+            leftImage.src = leftBlobURL;
+            rightImage.src = rightBlobURL;
 
-            console.log("Dibujando imagen completa en canvas temporal...");
-            tempCtx.drawImage(img, 0, 0); // Dibuja la imagen completa
-            console.log("Dibujo completo.");
+            console.log("Mostrando el visor...");
+            resetViewerState(); // Resetea zoom/pan a valores iniciales
+            imageViewer.style.display = 'block'; // Mostrar el visor
+            mainInterface.style.display = 'none'; // Ocultar la interfaz principal
 
-            // --- CAMBIO: Convertir canvas a Blob (asíncrono) ---
-            console.log("Llamando a canvas.toBlob() para generar JPEG...");
-            tempCanvas.toBlob(function(blob) {
-                // --- Este código se ejecuta DESPUÉS de que toBlob termine ---
-                if (!blob) {
-                    console.error("canvas.toBlob() falló - no se generó blob.");
-                    alert("Error: No se pudo convertir el canvas a blob.");
-                    // No llamar a resetUI aquí directamente podría ser mejor
-                    // para evitar revocar la URL original si aún se necesita.
-                    // Quizás solo ocultar el visor si ya estaba visible.
-                    imageViewer.style.display = 'none';
-                    mainInterface.style.display = 'flex';
-                    return;
-                }
-                console.log("canvas.toBlob() exitoso. Tipo de Blob:", blob.type, "Tamaño:", blob.size);
-
-                // --- CAMBIO: Crear Object URL desde el Blob del canvas ---
-                let canvasBlobURL = null;
-                 try {
-                    canvasBlobURL = URL.createObjectURL(blob);
-                    objectURLsToRevoke.push(canvasBlobURL); // Add to list for future cleanup
-                    console.log("Canvas Blob Object URL creado:", canvasBlobURL.substring(0, 100));
-                 } catch(error) {
-                     console.error("Error creando Object URL desde el blob del canvas:", error);
-                     alert("Error al crear URL para la imagen procesada.");
-                     // No llamar a resetUI aquí
-                     imageViewer.style.display = 'none';
-                     mainInterface.style.display = 'flex';
-                     return;
-                 }
-
-
-                // --- Asigna ESTE Object URL a AMBAS mitades ---
-                console.log("Asignando Object URL del canvas a las imágenes del visor...");
-                leftImage.src = canvasBlobURL;
-                rightImage.src = canvasBlobURL; // Usar la misma URL para la prueba
-
-                // --- Mostrar Visor ---
-                console.log("Mostrando el visor con imagen de prueba (Object URL)...");
-                resetViewerState(); // Aplica transformaciones iniciales (scale 1, translate 0)
-                imageViewer.style.display = 'block';
-                mainInterface.style.display = 'none';
-
-            }, 'image/jpeg', 0.8); // Especificar tipo y calidad para toBlob
-
-        } catch(error) {
-             console.error("Error durante la prueba de canvas único (Object URL):", error);
-             alert("Error al procesar la imagen (prueba Object URL): " + error.message);
-             resetUI(); // Aquí sí reseteamos porque falló antes del paso asíncrono
+        } catch (error) {
+            console.error("Error durante el procesamiento y división de la imagen:", error);
+            alert("Error al procesar la imagen: " + error.message);
+            resetUI(); // Resetea y revoca URLs
         }
-        // No poner código aquí que dependa del resultado de toBlob
-    } // Fin img.onload
+    }; // Fin img.onload
 
     img.onerror = function(e) {
         console.error("Image onerror al cargar desde:", originalFileURL ? originalFileURL.substring(0,100) : "URL inválida");
         alert('Error: No se pudo cargar la imagen fuente seleccionada desde Object URL.');
         resetUI(); // Llama a resetUI que también revocará la URL fallida si existe
-    }
-    // Asigna la URL del *archivo original* al src de la imagen temporal
+    };
+    // Asigna la URL del *archivo original* al src de la imagen temporal para cargarla
     console.log("Asignando Object URL del archivo original a img.src");
-    img.src = originalFileURL; // Cargar imagen desde el Object URL del archivo
+    img.src = originalFileURL;
 }
-  // --- FIN: VERSIÓN DE PRUEBA handleFileSelect (Object URL / toBlob) ---
+  // --- FIN handleFileSelect (Split con Object URL / toBlob) ---
 
 
   // --- Manejo Táctil del Visor (Sin cambios respecto a la versión anterior) ---
@@ -597,8 +618,8 @@
           initialPinchDistance = getDistance(touches);
           initialTranslateX = currentTranslateX;
           initialTranslateY = currentTranslateY;
-          // Guardamos la escala inicial para calcular el ratio relativo
-          // startScale = currentScale; // Necesitaríamos esto para un cálculo preciso del ratio
+          // Necesitamos guardar la escala al inicio del gesto para un cálculo de ratio correcto
+          // startScale = currentScale;
       }
   }, { passive: false });
 
@@ -613,21 +634,35 @@
           applyTransform();
       } else if (isZooming && touches.length === 2) {
           const currentDistance = getDistance(touches);
-          if (initialPinchDistance <= 0) return;
+          if (initialPinchDistance <= 0) return; // Evitar división por cero
           const scaleRatio = currentDistance / initialPinchDistance;
 
           // Aplicar ratio a la escala actual (puede causar aceleración, ver nota anterior)
+          // Para un cálculo más preciso, sería: newScale = startScale * scaleRatio;
           let potentialNewScale = currentScale * scaleRatio;
 
-          // Clamp scale (e.g., between 1x and 10x)
-          potentialNewScale = Math.max(1, Math.min(potentialNewScale, 10));
+          // Clamp scale (limitar zoom mínimo y máximo)
+          potentialNewScale = Math.max(1, Math.min(potentialNewScale, 10)); // Ej: Zoom 1x a 10x
 
-          // Ajuste de traslación para zoom desde el centro (omitido por simplicidad)
+          // --- Ajuste de traslación para zoom desde el centro (COMPLEJO) ---
+          // Por ahora, solo aplicamos la escala. El usuario puede panear después.
+          // const midpoint = getMidpoint(touches);
+          // // ... Cálculos para ajustar currentTranslateX/Y ...
+          // --- Fin Ajuste ---
 
           currentScale = potentialNewScale;
 
           // Actualizar initialPinchDistance para el siguiente evento move
-          initialPinchDistance = currentDistance; // Mantiene la lógica anterior
+          // ¡Esto es clave para que el ratio funcione correctamente en el siguiente frame!
+          initialPinchDistance = currentDistance;
+          // ¡También necesitamos actualizar la escala base para el siguiente cálculo de ratio!
+          // Si no, la escala se multiplica exponencialmente.
+          // Corrección: La escala se basa en el estado *antes* del movimiento.
+          // El problema está en cómo se actualiza la escala base para el siguiente frame.
+          // Una mejor aproximación sería guardar la escala al inicio del *gesto* (touchstart)
+          // y calcular siempre: newScale = startScale * (currentDistance / initialDistanceAtStart);
+          // Mantenemos la lógica simple por ahora:
+          // currentScale = potentialNewScale; (ya hecho)
 
           applyTransform();
       }
@@ -636,20 +671,22 @@
   splitViewContainer.addEventListener('touchend', (e) => {
       const touches = e.touches;
       if (touches.length < 2) {
-          isZooming = false;
+          isZooming = false; // Termina el zoom si quedan menos de 2 dedos
       }
       if (touches.length < 1) {
-          isPanning = false;
+          isPanning = false; // Termina el paneo si no quedan dedos
       } else if (touches.length === 1) {
-           if(!isPanning) {
+           // Si estábamos haciendo zoom y soltamos un dedo, cambiamos a paneo
+           if(!isPanning) { // Solo si no estábamos ya paneando
                 isPanning = true;
-                isZooming = false;
-                startX = touches[0].clientX;
+                isZooming = false; // Asegurar que zoom está desactivado
+                startX = touches[0].clientX; // Actualizar punto de inicio para paneo
                 startY = touches[0].clientY;
-                initialTranslateX = currentTranslateX;
+                initialTranslateX = currentTranslateX; // Guardar pos actual para paneo
                 initialTranslateY = currentTranslateY;
            }
       }
+      // Resetear distancia inicial de pinch cuando el zoom termina
       if (!isZooming) {
           initialPinchDistance = 0;
       }
@@ -659,7 +696,7 @@
   // --- Event Listeners Botones (Sin cambios) ---
   startBtn.onclick = requestPermissionAndStart;
   visualizeBtn.onclick = () => fileInput.click();
-  fileInput.onchange = handleFileSelect; // Llama a la versión de prueba Object URL
+  fileInput.onchange = handleFileSelect; // Llama a la versión final con split y Object URL
   closeViewerBtn.onclick = resetUI; // Llama a resetUI que revoca URLs
 
   takeFirstPhotoBtn.onclick = () => {
@@ -685,7 +722,7 @@
         combinedCanvas.height = Math.max(img1.height, img2.height);
         combinedCtx.drawImage(img1, 0, 0);
         combinedCtx.drawImage(img2, img1.width, 0);
-        const combinedImageURL = combinedCanvas.toDataURL('image/jpeg');
+        const combinedImageURL = combinedCanvas.toDataURL('image/jpeg'); // Guardar como JPEG
 
         resultImage.src = combinedImageURL;
         resultModal.style.display = 'flex';
