@@ -22,14 +22,14 @@
 
 <div id="progress"></div>
 
-<button id="takeFirstPhoto">Tomar Primera Foto</button>
+<button id="startBtn">Iniciar Cámara</button>
+<button id="takeFirstPhoto" style="display:none;">Tomar Primera Foto</button>
 <button id="takeSecondPhoto" style="display:none;">Tomar Segunda Foto</button>
 
 <script>
 let firstImageData = null;
 let startTracking = false;
-let movement = 0;
-let lastTimestamp = null;
+let initialGamma = null;
 
 // Iniciar cámara
 function startCamera() {
@@ -54,36 +54,53 @@ function takePhoto() {
   return canvas.toDataURL('image/jpeg');
 }
 
+// Solicitar permiso en iPhone
+function requestPermission() {
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission()
+      .then(response => {
+        if (response === 'granted') {
+          startCamera();
+          document.getElementById('startBtn').style.display = 'none';
+          document.getElementById('takeFirstPhoto').style.display = 'block';
+        } else {
+          alert('Permiso denegado');
+        }
+      })
+      .catch(console.error);
+  } else {
+    // Android no necesita pedir permiso
+    startCamera();
+    document.getElementById('startBtn').style.display = 'none';
+    document.getElementById('takeFirstPhoto').style.display = 'block';
+  }
+}
+
+document.getElementById('startBtn').onclick = requestPermission;
+
 document.getElementById('takeFirstPhoto').onclick = () => {
   firstImageData = takePhoto();
-  document.getElementById('progress').innerText = "Ahora mueve el teléfono 5cm a la derecha...";
   startTracking = true;
-  movement = 0;
-  lastTimestamp = null;
+  initialGamma = null;
+  document.getElementById('progress').innerText = "Ahora mueve ligeramente el teléfono a la derecha...";
   document.getElementById('takeFirstPhoto').style.display = 'none';
 };
 
-// Escuchar movimiento lineal
-window.addEventListener('devicemotion', (event) => {
+// Detectar movimiento de orientación
+window.addEventListener('deviceorientation', (event) => {
   if (!startTracking) return;
 
-  if (lastTimestamp === null) {
-    lastTimestamp = event.timeStamp;
+  if (initialGamma === null) {
+    initialGamma = event.gamma;
     return;
   }
 
-  const dt = (event.timeStamp - lastTimestamp) / 1000; // tiempo en segundos
-  lastTimestamp = event.timeStamp;
+  const currentGamma = event.gamma;
+  const delta = currentGamma - initialGamma;
 
-  // aceleración en el eje X (izquierda-derecha)
-  const ax = event.accelerationIncludingGravity.x || 0;
+  document.getElementById('progress').innerText = `Movimiento detectado: ${delta.toFixed(2)}°`;
 
-  // integrar aceleración para estimar distancia (distancia ≈ aceleración × tiempo²)
-  movement += ax * dt * dt * 500; // el factor 500 es para amplificar y compensar la baja aceleración
-
-  document.getElementById('progress').innerText = `Movido aprox: ${movement.toFixed(2)} cm`;
-
-  if (Math.abs(movement) >= 5) { // si movió 5cm o más
+  if (delta > 5) { // si giró más de 5 grados a la derecha
     startTracking = false;
     document.getElementById('progress').innerText = "¡Listo! Ahora toma la segunda foto.";
     document.getElementById('takeSecondPhoto').style.display = 'block';
@@ -93,7 +110,6 @@ window.addEventListener('devicemotion', (event) => {
 document.getElementById('takeSecondPhoto').onclick = () => {
   const secondImageData = takePhoto();
 
-  // Unir imágenes
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
 
@@ -115,8 +131,6 @@ document.getElementById('takeSecondPhoto').onclick = () => {
   };
   img1.src = firstImageData;
 };
-
-startCamera();
 </script>
 
 </body>
