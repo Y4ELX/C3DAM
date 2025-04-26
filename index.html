@@ -3,25 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Cámara 3D Estilo iOS v2</title>
+  <title>Cámara y Visor 3D</title>
   <style>
     /* Reset y Estilos Base */
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      /* Desactivar selección de texto y callouts en móviles */
+      -webkit-user-select: none; /* Safari */
+      -ms-user-select: none; /* IE 10+ */
+      user-select: none;
+      -webkit-touch-callout: none; /* iOS Safari */
     }
 
     html {
         height: -webkit-fill-available; /* Soporte extra para iOS */
+        background-color: #000; /* Fondo negro general */
     }
 
     body {
-      /* Usa dvh para altura dinámica que considera UI del navegador */
       height: 100dvh;
-      /* Fallback para navegadores que no soporten dvh */
       min-height: -webkit-fill-available;
-      overflow: hidden; /* Evitar scroll general */
+      overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       display: flex;
       flex-direction: column;
@@ -29,25 +33,31 @@
       color: #fff;
     }
 
-    /* Contenedor principal para video y flash */
-    .viewport-container {
-        position: relative; /* Para posicionar el flash overlay */
-        flex-grow: 1; /* Ocupa el espacio restante */
-        overflow: hidden; /* Contener video/flash */
-        display: flex; /* Centrar video si es necesario */
-        background-color: #000; /* Fondo si el video no carga */
+    /* Contenedor de la interfaz principal (Cámara) */
+    #mainInterface {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
     }
 
-    /* Visor de la cámara */
+    /* Contenedor principal para video y flash */
+    .viewport-container {
+        position: relative;
+        flex-grow: 1;
+        overflow: hidden;
+        display: flex;
+        background-color: #000;
+    }
+
     #video {
       width: 100%;
       height: 100%;
-      object-fit: cover; /* Cubre el área sin distorsión */
+      object-fit: cover;
       display: block;
-      z-index: 1; /* Debajo del flash */
+      z-index: 1;
     }
 
-    /* --- Efecto Flash --- */
     #flashOverlay {
         position: absolute;
         top: 0;
@@ -56,36 +66,42 @@
         height: 100%;
         background-color: white;
         opacity: 0;
-        pointer-events: none; /* No interfiere con clics */
-        z-index: 5; /* Encima del video, debajo de controles/modal */
-        display: none; /* Oculto hasta que se activa */
+        pointer-events: none;
+        z-index: 5;
+        display: none;
     }
 
-    /* Animación del flash */
     @keyframes flashAnimation {
         0% { opacity: 0; }
-        50% { opacity: 0.7; } /* Pico del flash */
+        50% { opacity: 0.7; }
         100% { opacity: 0; }
     }
 
-    /* Clase para activar la animación */
     #flashOverlay.flash {
-        display: block; /* Hacer visible para animar */
-        animation: flashAnimation 0.3s ease-in-out; /* Duración y timing */
+        display: block;
+        animation: flashAnimation 0.3s ease-in-out;
     }
 
     /* Contenedor de controles inferior */
     #controls-container {
       background-color: #000;
-      padding: 15px 20px; /* Ajuste ligero de padding */
+      padding: 15px 20px;
       display: flex;
       flex-direction: column;
       align-items: center;
       width: 100%;
       flex-shrink: 0;
-      z-index: 10; /* Encima del video y flash */
-      position: relative; /* Asegura z-index */
+      z-index: 10;
+      position: relative;
     }
+
+    /* Contenedor para botones iniciales */
+    #initial-buttons {
+        display: flex; /* Alinea botones horizontalmente */
+        gap: 15px; /* Espacio entre botones */
+        margin-bottom: 10px;
+    }
+
 
     #progress {
       margin-bottom: 15px;
@@ -96,25 +112,27 @@
       line-height: 1.4;
     }
 
-    /* Estilos de botones */
     button {
       background: none;
       border: none;
       color: #fff;
       cursor: pointer;
       font-size: 1em;
-      margin: 5px 0;
       padding: 10px 15px;
       border-radius: 8px;
+      background-color: #333; /* Estilo base para botones */
+      transition: background-color 0.2s ease;
+    }
+    button:active {
+        background-color: #555;
     }
 
-    #startBtn {
-      background-color: #333;
-      padding: 12px 25px;
-      font-weight: bold;
+    #startBtn, #visualizeBtn { /* Botones iniciales */
+       padding: 12px 20px;
+       font-weight: 500;
     }
 
-    #takeFirstPhoto, #takeSecondPhoto {
+    #takeFirstPhoto, #takeSecondPhoto { /* Botones obturador */
       width: 70px;
       height: 70px;
       border-radius: 50%;
@@ -124,15 +142,15 @@
       margin: 10px 0;
       position: relative;
     }
-
     #takeFirstPhoto:active, #takeSecondPhoto:active {
         background-color: rgba(200, 200, 200, 0.9);
     }
 
     #canvas { display: none; }
     #photoPreview { display: none; }
+    #fileInput { display: none; } /* Input de archivo oculto */
 
-    /* --- Estilos del Modal (Rediseñado) --- */
+    /* --- Estilos del Modal (Resultado Cámara) --- */
     .modal {
       display: none;
       position: fixed;
@@ -140,24 +158,24 @@
       left: 0;
       top: 0;
       width: 100%;
-      height: 100dvh; /* Usar dvh también aquí */
+      height: 100dvh;
       overflow: auto;
-      background-color: rgba(0, 0, 0, 0.8); /* Un poco más oscuro */
+      background-color: rgba(0, 0, 0, 0.8);
       justify-content: center;
       align-items: center;
-      padding: 15px; /* Espacio alrededor del contenido */
+      padding: 15px;
     }
 
     .modal-content {
-      background-color: #282828; /* Fondo oscuro para el modal */
-      color: #fff; /* Texto blanco en modal */
+      background-color: #282828;
+      color: #fff;
       margin: auto;
-      padding: 25px; /* Padding uniforme */
+      padding: 25px;
       width: auto;
       max-width: 90%;
-      max-height: 90dvh; /* Límite de altura */
+      max-height: 90dvh;
       position: relative;
-      border-radius: 12px; /* Bordes más redondeados */
+      border-radius: 12px;
       box-shadow: 0 8px 25px rgba(0,0,0,0.5);
       text-align: center;
       display: flex;
@@ -168,15 +186,14 @@
     .modal-content img {
       display: block;
       max-width: 100%;
-      /* Ajusta max-height considerando padding y espacio para botón */
       max-height: calc(90dvh - 150px);
       height: auto;
-      margin-bottom: 20px; /* Espacio antes del botón */
-      border-radius: 6px; /* Bordes redondeados para la imagen */
+      margin-bottom: 20px;
+      border-radius: 6px;
     }
 
-    .close-btn {
-      color: #ccc; /* Color más visible en fondo oscuro */
+    .close-btn { /* Botón cerrar para ambos modales/visores */
+      color: #ccc;
       position: absolute;
       top: 10px;
       right: 15px;
@@ -184,55 +201,115 @@
       font-weight: bold;
       cursor: pointer;
       line-height: 1;
+      z-index: 10; /* Encima de la imagen */
+      padding: 5px; /* Área de toque más grande */
+      background-color: rgba(0, 0, 0, 0.3); /* Fondo sutil */
+      border-radius: 50%;
     }
-
     .close-btn:hover,
     .close-btn:focus {
       color: #fff;
+      background-color: rgba(0, 0, 0, 0.6);
     }
 
     #saveBtn {
       background-color: #007AFF;
       color: white;
-      padding: 12px 25px; /* Botón más grande */
+      padding: 12px 25px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
       font-size: 1em;
       font-weight: bold;
-      margin-top: 10px; /* Espacio sobre el botón */
-      /* Ya no es absoluto, se alinea con flex */
+      margin-top: 10px;
+    }
+    #saveBtn:hover { background-color: #005ecb; }
+
+    /* --- Estilos del Visor de Imágenes --- */
+    #imageViewer {
+        display: none; /* Oculto por defecto */
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100dvh;
+        background-color: #000;
+        z-index: 2000; /* Encima de todo lo demás */
+        /* Forzar gestos de pinch/pan en este contenedor */
+        touch-action: none;
     }
 
-    #saveBtn:hover {
-      background-color: #005ecb;
+    #splitViewContainer {
+        position: relative; /* Contenedor para imágenes absolutas */
+        width: 100%;
+        height: 100%;
+        overflow: hidden; /* Clave para el efecto zoom/pan */
+        display: flex; /* Aunque usemos absoluto, flex ayuda inicialmente */
     }
+
+    #leftImage, #rightImage {
+        position: absolute;
+        top: 0;
+        height: 100%; /* Ocupa toda la altura */
+        width: 50%; /* Cada una ocupa la mitad del ancho */
+        object-fit: cover; /* Cubre su 50% de espacio */
+        /* Origen de la transformación para zoom centrado */
+        transform-origin: center center;
+        /* Transición suave para transformaciones (opcional) */
+        /* transition: transform 0.1s ease-out; */
+        will-change: transform; /* Optimización para animación */
+    }
+
+    #leftImage {
+        left: 0;
+    }
+
+    #rightImage {
+        left: 50%; /* Empieza en la mitad derecha */
+    }
+
+    /* Botón de cerrar específico del visor */
+    #closeViewerBtn {
+        /* Usa la clase genérica .close-btn */
+    }
+
 
   </style>
 </head>
 <body>
 
-<div class="viewport-container">
-    <video id="video" autoplay muted playsinline></video>
-    <div id="flashOverlay"></div> </div>
-
-<canvas id="canvas"></canvas>
-
-<div id="controls-container">
-  <div id="progress"></div>
-  <button id="startBtn">Iniciar Cámara</button>
-  <button id="takeFirstPhoto" style="display:none;"></button>
-  <button id="takeSecondPhoto" style="display:none;"></button>
+<div id="mainInterface">
+    <div class="viewport-container">
+        <video id="video" autoplay muted playsinline></video>
+        <div id="flashOverlay"></div>
+    </div>
+    <canvas id="canvas"></canvas> <div id="controls-container">
+      <div id="progress"></div>
+      <div id="initial-buttons">
+          <button id="startBtn">Iniciar Cámara</button>
+          <button id="visualizeBtn">Visualizar Fotos</button>
+      </div>
+      <button id="takeFirstPhoto" style="display:none;"></button>
+      <button id="takeSecondPhoto" style="display:none;"></button>
+    </div>
 </div>
 
-<div id="photoPreview"></div>
+<input type="file" id="fileInput" accept="image/*">
 
-<div id="polaroidModal" class="modal">
+<div id="resultModal" class="modal">
   <div class="modal-content">
-    <span id="closeModalBtn" class="close-btn">&times;</span>
-    <img id="polaroidImage" src="" alt="Foto 3D Generada">
+    <span id="closeResultModalBtn" class="close-btn">&times;</span>
+    <img id="resultImage" src="" alt="Foto 3D Generada">
     <button id="saveBtn">Guardar Foto</button>
   </div>
+</div>
+
+<div id="imageViewer">
+    <div id="splitViewContainer">
+        <img id="leftImage" src="" alt="Mitad Izquierda">
+        <img id="rightImage" src="" alt="Mitad Derecha">
+    </div>
+    <span id="closeViewerBtn" class="close-btn">&times;</span>
 </div>
 
 
@@ -240,39 +317,61 @@
   let firstImageData = null;
   let stream = null;
 
+  // --- Elementos DOM ---
+  const mainInterface = document.getElementById('mainInterface');
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
   const progress = document.getElementById('progress');
   const startBtn = document.getElementById('startBtn');
+  const visualizeBtn = document.getElementById('visualizeBtn');
+  const initialButtonsContainer = document.getElementById('initial-buttons');
   const takeFirstPhotoBtn = document.getElementById('takeFirstPhoto');
   const takeSecondPhotoBtn = document.getElementById('takeSecondPhoto');
-  const polaroidModal = document.getElementById('polaroidModal');
-  const polaroidImage = document.getElementById('polaroidImage');
-  const closeModalBtn = document.getElementById('closeModalBtn');
-  const saveBtn = document.getElementById('saveBtn');
   const controlsContainer = document.getElementById('controls-container');
-  const flashOverlay = document.getElementById('flashOverlay'); // Referencia al overlay
+  const flashOverlay = document.getElementById('flashOverlay');
+  const fileInput = document.getElementById('fileInput');
 
-  // Función para activar el flash
+  // Modal Resultado Cámara
+  const resultModal = document.getElementById('resultModal');
+  const resultImage = document.getElementById('resultImage');
+  const closeResultModalBtn = document.getElementById('closeResultModalBtn');
+  const saveBtn = document.getElementById('saveBtn');
+
+  // Visor de Imágenes
+  const imageViewer = document.getElementById('imageViewer');
+  const splitViewContainer = document.getElementById('splitViewContainer');
+  const leftImage = document.getElementById('leftImage');
+  const rightImage = document.getElementById('rightImage');
+  const closeViewerBtn = document.getElementById('closeViewerBtn');
+
+  // --- Estado de Zoom/Pan del Visor ---
+  let currentScale = 1;
+  let currentTranslateX = 0;
+  let currentTranslateY = 0;
+  let isPanning = false;
+  let isZooming = false;
+  let startX, startY, initialPinchDistance;
+  let initialTranslateX = 0, initialTranslateY = 0; // Guardar estado al inicio del gesto
+
+
+  // --- Funciones Cámara ---
   function triggerFlash() {
+      flashOverlay.style.display = 'block'; // Asegurar visibilidad antes de añadir clase
       flashOverlay.classList.add('flash');
   }
 
-  // Listener para limpiar la clase de flash cuando termina la animación
   flashOverlay.addEventListener('animationend', () => {
       flashOverlay.classList.remove('flash');
-      flashOverlay.style.display = 'none'; // Asegura que se oculte
+      flashOverlay.style.display = 'none';
   });
 
-
-  // Iniciar cámara
   function startCamera() {
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
       .then(mediaStream => {
         stream = mediaStream;
         video.srcObject = stream;
         video.style.display = 'block';
-        startBtn.style.display = 'none';
+        initialButtonsContainer.style.display = 'none'; // Ocultar botones iniciales
         takeFirstPhotoBtn.style.display = 'block';
         takeSecondPhotoBtn.style.display = 'none';
         controlsContainer.style.display = 'flex';
@@ -285,17 +384,14 @@
       });
   }
 
-  // Detener cámara
   function stopCamera() {
       if (stream) {
           stream.getTracks().forEach(track => track.stop());
           stream = null;
           video.srcObject = null;
-          console.log("Cámara detenida");
       }
   }
 
-  // Tomar foto (ahora sin trigger flash aquí)
   function takePhoto() {
     const ctx = canvas.getContext('2d');
     canvas.width = video.videoWidth;
@@ -311,80 +407,265 @@
   function resetUI() {
       stopCamera();
       video.style.display = 'block';
-      startBtn.style.display = 'block';
+      initialButtonsContainer.style.display = 'flex'; // Mostrar botones iniciales
       takeFirstPhotoBtn.style.display = 'none';
       takeSecondPhotoBtn.style.display = 'none';
       progress.innerText = '';
-      polaroidModal.style.display = 'none';
+      resultModal.style.display = 'none';
+      imageViewer.style.display = 'none'; // Ocultar visor si estaba abierto
+      mainInterface.style.display = 'flex'; // Mostrar interfaz principal
       controlsContainer.style.display = 'flex';
       firstImageData = null;
-      flashOverlay.style.display = 'none'; // Asegurar que el flash esté oculto
-      flashOverlay.classList.remove('flash'); // Quitar clase por si acaso
+      flashOverlay.style.display = 'none';
+      flashOverlay.classList.remove('flash');
+      // Resetear estado del visor
+      resetViewerState();
   }
 
-  // --- Event Listeners ---
+  // --- Funciones Visor de Imágenes ---
+
+  function resetViewerState() {
+    currentScale = 1;
+    currentTranslateX = 0;
+    currentTranslateY = 0;
+    applyTransform(); // Aplica el estado reseteado
+    leftImage.src = ''; // Limpiar imágenes
+    rightImage.src = '';
+    fileInput.value = null; // Permitir seleccionar el mismo archivo de nuevo
+  }
+
+  function applyTransform() {
+      const transformValue = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
+      leftImage.style.transform = transformValue;
+      rightImage.style.transform = transformValue;
+  }
+
+  function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file || !file.type.startsWith('image/')) {
+          alert('Por favor, selecciona un archivo de imagen.');
+          return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+              // Calcular dimensiones
+              const fullWidth = img.naturalWidth;
+              const halfWidth = fullWidth / 2;
+              const height = img.naturalHeight;
+
+              // Crear canvas temporal para la mitad izquierda
+              const canvasLeft = document.createElement('canvas');
+              canvasLeft.width = halfWidth;
+              canvasLeft.height = height;
+              const ctxLeft = canvasLeft.getContext('2d');
+              ctxLeft.drawImage(img, 0, 0, halfWidth, height, 0, 0, halfWidth, height);
+
+              // Crear canvas temporal para la mitad derecha
+              const canvasRight = document.createElement('canvas');
+              canvasRight.width = halfWidth;
+              canvasRight.height = height;
+              const ctxRight = canvasRight.getContext('2d');
+              ctxRight.drawImage(img, halfWidth, 0, halfWidth, height, 0, 0, halfWidth, height);
+
+              // Asignar a los elementos img del visor
+              leftImage.src = canvasLeft.toDataURL();
+              rightImage.src = canvasRight.toDataURL();
+
+              // Mostrar el visor y ocultar la interfaz principal
+              resetViewerState(); // Asegura estado inicial limpio
+              imageViewer.style.display = 'block';
+              mainInterface.style.display = 'none';
+          }
+          img.onerror = function() {
+              alert('Error al cargar la imagen.');
+              resetUI();
+          }
+          img.src = e.target.result;
+      }
+      reader.onerror = function() {
+          alert('Error al leer el archivo.');
+          resetUI();
+      }
+      reader.readAsDataURL(file);
+  }
+
+  // --- Manejo Táctil del Visor ---
+  function getDistance(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function getMidpoint(touches) {
+      return {
+          x: (touches[0].clientX + touches[1].clientX) / 2,
+          y: (touches[0].clientY + touches[1].clientY) / 2
+      };
+  }
+
+  splitViewContainer.addEventListener('touchstart', (e) => {
+      e.preventDefault(); // Prevenir scroll/zoom del navegador
+      const touches = e.touches;
+
+      if (touches.length === 1) {
+          isPanning = true;
+          isZooming = false;
+          startX = touches[0].clientX;
+          startY = touches[0].clientY;
+          // Guardar el estado actual de traslación al iniciar el paneo
+          initialTranslateX = currentTranslateX;
+          initialTranslateY = currentTranslateY;
+
+      } else if (touches.length === 2) {
+          isZooming = true;
+          isPanning = false;
+          initialPinchDistance = getDistance(touches);
+          // Guardar el estado actual de escala y traslación al iniciar el zoom
+          // (la traslación también se afecta por el origen del zoom)
+          // Considerar el punto medio como origen para calcular nueva traslación
+          // Más simple: guardar el estado actual y calcular deltas
+          initialTranslateX = currentTranslateX;
+          initialTranslateY = currentTranslateY;
+          // No es necesario guardar initialScale aquí si calculamos el ratio
+      }
+  }, { passive: false });
+
+  splitViewContainer.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touches = e.touches;
+
+      if (isPanning && touches.length === 1) {
+          const dx = touches[0].clientX - startX;
+          const dy = touches[0].clientY - startY;
+          // Nueva traslación = inicial + delta
+          currentTranslateX = initialTranslateX + dx;
+          currentTranslateY = initialTranslateY + dy;
+          applyTransform();
+
+      } else if (isZooming && touches.length === 2) {
+          const currentDistance = getDistance(touches);
+          if (initialPinchDistance <= 0) return; // Evitar división por cero
+
+          const scaleRatio = currentDistance / initialPinchDistance;
+          const newScale = Math.max(1, currentScale * scaleRatio); // Escala mínima 1x
+
+          // --- Ajuste de traslación para hacer zoom desde el centro del gesto ---
+          // 1. Punto medio actual del gesto
+          const currentMidpoint = getMidpoint(touches);
+
+          // 2. Calcular cuánto se movió el contenido debido al escalado puro
+          //    (Vector desde el centro (0,0) al punto medio, escalado)
+          //    No es tan simple, necesitamos considerar la traslación actual.
+          //    Un enfoque más robusto:
+          //    - Posición del punto medio en coordenadas del contenido (antes de escalar)
+          //    - Posición del punto medio en coordenadas del contenido (después de escalar)
+          //    - Calcular la diferencia y ajustar la traslación para compensar.
+
+          // *** Simplificación (Zoom desde el centro del contenedor por ahora) ***
+          // Para hacer zoom desde el centro del gesto, la matemática es más compleja.
+          // Por simplicidad inicial, escalaremos y permitiremos panear después.
+          // O, podemos intentar un cálculo básico de ajuste:
+          const dx = currentMidpoint.x - (splitViewContainer.offsetWidth / 2);
+          const dy = currentMidpoint.y - (splitViewContainer.offsetHeight / 2);
+
+          // Ajustar la traslación basada en cómo cambia la escala
+          // Esta parte es compleja y puede necesitar ajustes finos
+          // currentTranslateX = initialTranslateX * scaleRatio + dx * (1 - scaleRatio);
+          // currentTranslateY = initialTranslateY * scaleRatio + dy * (1 - scaleRatio);
+
+          // **** Mantenimiento Simple: Escala y permite panear ****
+           currentScale = newScale; // Aplicar nueva escala
+          // La traslación se maneja por separado al arrastrar (o al inicio del zoom)
+          // Re-calcular initialPinchDistance para el siguiente movimiento
+          initialPinchDistance = currentDistance;
+
+
+          applyTransform();
+      }
+  }, { passive: false });
+
+  splitViewContainer.addEventListener('touchend', (e) => {
+      const touches = e.touches;
+      if (touches.length < 2) {
+          isZooming = false;
+      }
+      if (touches.length < 1) {
+          isPanning = false;
+      } else if (touches.length === 1) {
+           // Si estábamos haciendo zoom y soltamos un dedo, iniciamos paneo desde ahí
+           if(isZooming) {
+                isPanning = true;
+                isZooming = false;
+                startX = touches[0].clientX;
+                startY = touches[0].clientY;
+                initialTranslateX = currentTranslateX;
+                initialTranslateY = currentTranslateY;
+           }
+      }
+
+  });
+
+
+  // --- Event Listeners Botones ---
   startBtn.onclick = requestPermissionAndStart;
+  visualizeBtn.onclick = () => fileInput.click(); // Abre el selector de archivos
+  fileInput.onchange = handleFileSelect; // Procesa el archivo seleccionado
+  closeViewerBtn.onclick = resetUI; // Cierra el visor
 
   takeFirstPhotoBtn.onclick = () => {
-    triggerFlash(); // Activar flash
-    // Pequeña demora opcional para que el flash se vea antes de procesar
-    // setTimeout(() => {
-        firstImageData = takePhoto();
-        progress.innerText = "¡OK! Ahora mueve el móvil ~5cm a la derecha y toma la segunda foto.";
-        takeFirstPhotoBtn.style.display = 'none';
-        takeSecondPhotoBtn.style.display = 'block';
-    // }, 50); // 50ms de demora (ajustar si es necesario)
+    triggerFlash();
+    firstImageData = takePhoto();
+    progress.innerText = "¡OK! Ahora mueve el móvil ~5cm a la derecha y toma la segunda foto.";
+    takeFirstPhotoBtn.style.display = 'none';
+    takeSecondPhotoBtn.style.display = 'block';
   };
 
   takeSecondPhotoBtn.onclick = () => {
-    triggerFlash(); // Activar flash
-    // setTimeout(() => {
-        const secondImageData = takePhoto();
-        progress.innerText = "Procesando...";
+    triggerFlash();
+    const secondImageData = takePhoto();
+    progress.innerText = "Procesando...";
 
-        const img1 = new Image();
-        const img2 = new Image();
+    const img1 = new Image();
+    const img2 = new Image();
+    img1.onload = () => {
+      img2.onload = () => {
+        const combinedCanvas = document.createElement('canvas');
+        const combinedCtx = combinedCanvas.getContext('2d');
+        combinedCanvas.width = img1.width + img2.width;
+        combinedCanvas.height = Math.max(img1.height, img2.height);
+        combinedCtx.drawImage(img1, 0, 0);
+        combinedCtx.drawImage(img2, img1.width, 0);
+        const combinedImageURL = combinedCanvas.toDataURL('image/jpeg');
 
-        img1.onload = () => {
-          img2.onload = () => {
-            const combinedCanvas = document.createElement('canvas');
-            const combinedCtx = combinedCanvas.getContext('2d');
-
-            combinedCanvas.width = img1.width + img2.width;
-            combinedCanvas.height = Math.max(img1.height, img2.height);
-
-            combinedCtx.drawImage(img1, 0, 0);
-            combinedCtx.drawImage(img2, img1.width, 0);
-
-            const combinedImageURL = combinedCanvas.toDataURL('image/jpeg');
-
-            polaroidImage.src = combinedImageURL;
-            polaroidModal.style.display = 'flex';
-
-            progress.innerText = '';
-            takeSecondPhotoBtn.style.display = 'none';
-
-          };
-          img2.src = secondImageData;
-        };
-        img1.src = firstImageData;
-    // }, 50);
+        resultImage.src = combinedImageURL; // Imagen para el modal de resultado
+        resultModal.style.display = 'flex'; // Muestra el modal de resultado
+        progress.innerText = '';
+        takeSecondPhotoBtn.style.display = 'none';
+      };
+      img2.src = secondImageData;
+    };
+    img1.src = firstImageData;
   };
 
-  closeModalBtn.onclick = () => {
-    resetUI();
+  closeResultModalBtn.onclick = () => {
+    resetUI(); // Cierra el modal de resultado y resetea
   };
 
+  // Cerrar modal de resultado si se hace clic fuera (opcional)
   window.onclick = (event) => {
-    if (event.target == polaroidModal) {
+    if (event.target == resultModal) {
        resetUI();
     }
+    // No cerramos el visor de fotos al hacer clic fuera, solo con el botón X
   };
 
   saveBtn.onclick = () => {
     const link = document.createElement('a');
-    link.href = polaroidImage.src;
-    link.download = 'foto-3d.jpg'; // Nombre de archivo simplificado
+    link.href = resultImage.src; // Guarda la imagen del modal de resultado
+    link.download = 'foto-3d-captura.jpg';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
