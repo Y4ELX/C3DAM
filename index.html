@@ -29,7 +29,9 @@
 <script>
 let firstImageData = null;
 let startTracking = false;
-let initialGamma = null;
+let initialX = null;  // Acumulador para el desplazamiento
+let previousAcceleration = 0;  // Aceleración anterior
+let totalMovement = 0;  // Acumulación total del movimiento
 
 // Iniciar cámara
 function startCamera() {
@@ -81,30 +83,42 @@ document.getElementById('startBtn').onclick = requestPermission;
 document.getElementById('takeFirstPhoto').onclick = () => {
   firstImageData = takePhoto();
   startTracking = true;
-  initialGamma = null;
+  initialX = null;
+  totalMovement = 0;
   document.getElementById('progress').innerText = "Ahora mueve ligeramente el teléfono a la derecha...";
   document.getElementById('takeFirstPhoto').style.display = 'none';
 };
 
-// Detectar movimiento de orientación
-window.addEventListener('deviceorientation', (event) => {
+// Detectar aceleración y movimiento lineal
+window.addEventListener('devicemotion', (event) => {
   if (!startTracking) return;
 
-  if (initialGamma === null) {
-    initialGamma = event.gamma;
+  // Obtener aceleración horizontal (en el eje X)
+  const accelerationX = event.accelerationIncludingGravity.x;
+
+  // Si es la primera vez, inicializamos la posición base
+  if (initialX === null) {
+    initialX = accelerationX;
     return;
   }
 
-  const currentGamma = event.gamma;
-  const delta = currentGamma - initialGamma;
+  // Calculamos el cambio en aceleración
+  const deltaAcceleration = accelerationX - previousAcceleration;
 
-  document.getElementById('progress').innerText = `Movimiento detectado: ${delta.toFixed(2)}°`;
+  // Aceleración acumulada (aproximación para el desplazamiento lineal)
+  totalMovement += deltaAcceleration;
 
-  if (delta > 5) { // si giró más de 5 grados a la derecha
+  document.getElementById('progress').innerText = `Movimiento detectado: ${totalMovement.toFixed(2)} unidades`;
+
+  // Si el movimiento acumulado es suficiente (ajustamos el umbral)
+  if (totalMovement > 30) {  // Aquí puedes ajustar el valor para que sea más preciso
     startTracking = false;
     document.getElementById('progress').innerText = "¡Listo! Ahora toma la segunda foto.";
     document.getElementById('takeSecondPhoto').style.display = 'block';
   }
+
+  // Guardamos la aceleración actual para la siguiente iteración
+  previousAcceleration = accelerationX;
 });
 
 document.getElementById('takeSecondPhoto').onclick = () => {
