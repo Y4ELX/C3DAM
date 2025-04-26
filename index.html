@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D picture maker</title>
+</head>
+<body>
+
+    <video id="video" autoplay></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <button id="startPhoto">Tomar Primera Foto</button>
+    <button id="secondPhoto" style="display:none;">Tomar Segunda Foto</button>
+    <div id="progress"></div>
+
+    <script>
+    let firstImageData = null;
+    let movementX = 0;
+    let startMoving = false;
+
+    // Activar la cámara
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+    document.getElementById('video').srcObject = stream;
+    });
+
+    // Capturar foto
+    function takePhoto() {
+    const canvas = document.getElementById('canvas');
+    const video = document.getElementById('video');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg');
+    }
+
+    document.getElementById('startPhoto').onclick = () => {
+    firstImageData = takePhoto();
+    startMoving = true;
+    document.getElementById('startPhoto').style.display = 'none';
+    document.getElementById('progress').innerText = "Mueve el teléfono a la derecha unos 5cm...";
+    };
+
+    // Escuchar el movimiento
+    window.addEventListener('devicemotion', (event) => {
+    if (startMoving) {
+        let accX = event.accelerationIncludingGravity.x;
+        if (accX > 1) { // Ajusta este valor dependiendo de la sensibilidad
+        movementX += accX;
+        document.getElementById('progress').innerText = `Movido: ${movementX.toFixed(2)}`;
+        }
+        if (movementX > 30) { // Umbral de "suficiente movimiento"
+        startMoving = false;
+        document.getElementById('progress').innerText = "¡Listo! Toma la segunda foto";
+        document.getElementById('secondPhoto').style.display = 'block';
+        }
+    }
+    });
+
+    document.getElementById('secondPhoto').onclick = () => {
+    const secondImageData = takePhoto();
+
+    // Combinar las dos fotos
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const img1 = new Image();
+    const img2 = new Image();
+    img1.onload = () => {
+        img2.onload = () => {
+        canvas.width = img1.width + img2.width;
+        canvas.height = img1.height;
+        ctx.drawImage(img1, 0, 0);
+        ctx.drawImage(img2, img1.width, 0);
+        canvas.style.display = 'block';
+        document.getElementById('video').style.display = 'none';
+        document.getElementById('secondPhoto').style.display = 'none';
+        document.getElementById('progress').innerText = "¡Estereograma creado!";
+        };
+        img2.src = secondImageData;
+    };
+    img1.src = firstImageData;
+    };
+    </script>
+
+    </body>
+</html>
