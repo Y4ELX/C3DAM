@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Cámara y Visor 3D con Fullscreen</title>
+  <title>Cámara y Visor 3D (Fullscreen Simulado)</title>
   <style>
     /* Reset y Estilos Base */
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
@@ -41,25 +41,21 @@
     #leftImage, #rightImage { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: center center; will-change: transform; background-color: #111; }
 
     /* Estilo para botón dentro del visor */
-    .viewer-button {
-        position: absolute;
-        z-index: 15; /* Encima de imagen, debajo de cerrar */
-        background-color: rgba(50, 50, 50, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: #fff;
-        padding: 8px 10px;
-        border-radius: 5px;
-        font-size: 0.9em;
-        cursor: pointer;
-    }
+    .viewer-button { position: absolute; z-index: 15; background-color: rgba(50, 50, 50, 0.7); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; padding: 8px 10px; border-radius: 5px; font-size: 0.9em; cursor: pointer; }
     .viewer-button:hover { background-color: rgba(80, 80, 80, 0.8); }
+    #fullscreenBtn { bottom: 15px; left: 15px; }
 
-    /* Posición específica botón Fullscreen */
-    #fullscreenBtn {
-        bottom: 15px;
-        left: 15px;
+    /* --- Clase para Simular Fullscreen --- */
+    .fullscreen-simulated {
+        /* Usar !important con precaución, pero útil aquí para asegurar override */
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100dvh !important; /* Usa dvh para altura dinámica real */
+        z-index: 5000 !important; /* Muy alto */
+        background-color: #000 !important; /* Asegurar fondo */
     }
-
   </style>
 </head>
 <body>
@@ -102,7 +98,7 @@
         </div>
     </div>
     <span id="closeViewerBtn" class="close-btn">&times;</span>
-    <button id="fullscreenBtn" class="viewer-button">Pantalla Completa</button> </div>
+    <button id="fullscreenBtn" class="viewer-button">Ampliar</button> </div>
 
 
 <script>
@@ -131,7 +127,7 @@
   const leftImage = document.getElementById('leftImage');
   const rightImage = document.getElementById('rightImage');
   const closeViewerBtn = document.getElementById('closeViewerBtn');
-  const fullscreenBtn = document.getElementById('fullscreenBtn'); // Botón Fullscreen
+  const fullscreenBtn = document.getElementById('fullscreenBtn');
 
   // --- Estado de Zoom/Pan ---
   let currentScale = 1; let currentTranslateX = 0; let currentTranslateY = 0;
@@ -167,11 +163,10 @@
       takeFirstPhotoBtn.style.display = 'none'; takeSecondPhotoBtn.style.display = 'none'; progress.innerText = ''; resultModal.style.display = 'none';
       imageViewer.style.display = 'none'; mainInterface.style.display = 'flex'; controlsContainer.style.display = 'flex'; firstImageData = null;
       flashOverlay.style.display = 'none'; flashOverlay.classList.remove('flash');
+      // Asegurarse de quitar la clase simulada y resetear botón
+      imageViewer.classList.remove('fullscreen-simulated');
+      fullscreenBtn.textContent = "Ampliar";
       resetViewerState();
-      // Asegurarse de salir de pantalla completa si estábamos en ella
-      if (document.fullscreenElement || document.webkitFullscreenElement) {
-          salirPantallaCompleta();
-      }
   }
 
   // --- Funciones Visor ---
@@ -186,40 +181,6 @@
     const img = new Image(); img.onload = async () => { console.log("Img onload D:", img.naturalWidth, "x", img.naturalHeight); if (img.naturalWidth < 2) { alert("Imagen muy estrecha."); resetUI(); return; } try { const canvasLeft = document.createElement('canvas'); const ctxLeft = canvasLeft.getContext('2d'); const leftWidth = Math.floor(img.naturalWidth / 2); const height = img.naturalHeight; canvasLeft.width = leftWidth; canvasLeft.height = height; ctxLeft.drawImage(img, 0, 0, leftWidth, height, 0, 0, leftWidth, height); const canvasRight = document.createElement('canvas'); const ctxRight = canvasRight.getContext('2d'); const rightWidth = img.naturalWidth - leftWidth; const sourceXRight = leftWidth; canvasRight.width = rightWidth; canvasRight.height = height; ctxRight.drawImage(img, sourceXRight, 0, rightWidth, height, 0, 0, rightWidth, height); console.log("Dibujo Mitades OK"); const [blobLeft, blobRight] = await Promise.all([ canvasToBlob(canvasLeft), canvasToBlob(canvasRight) ]); console.log("Blobs OK"); let leftBlobURL = null; let rightBlobURL = null; try { leftBlobURL = URL.createObjectURL(blobLeft); objectURLsToRevoke.push(leftBlobURL); rightBlobURL = URL.createObjectURL(blobRight); objectURLsToRevoke.push(rightBlobURL); console.log("Blob URLs OK"); } catch (error) { console.error("Error URL Blobs:", error); alert("Error URL proc."); resetUI(); return; } leftImage.src = leftBlobURL; rightImage.src = rightBlobURL; console.log("Mostrando visor..."); resetViewerState(); imageViewer.style.display = 'block'; mainInterface.style.display = 'none'; } catch (error) { console.error("Error división:", error); alert("Error proc img: " + error.message); resetUI(); } }; img.onerror = function(e) { console.error("Image onerror:", originalFileURL); alert('Error carga img fuente.'); resetUI(); }; console.log("Asignando URL original a img.src"); img.src = originalFileURL;
   }
 
-  // --- Funciones Fullscreen ---
-  function entrarPantallaCompleta(elemento) {
-      console.log("Intentando entrar en pantalla completa para:", elemento);
-      if (elemento.requestFullscreen) {
-        elemento.requestFullscreen().catch(err => console.error("Error requestFullscreen:", err));
-      } else if (elemento.webkitRequestFullscreen) { /* Safari */
-        elemento.webkitRequestFullscreen();
-      } else if (elemento.msRequestFullscreen) { /* IE11 */
-        elemento.msRequestFullscreen();
-      } else {
-          console.warn("Fullscreen API no soportada totalmente.");
-          // alert("La pantalla completa no es compatible con tu navegador.");
-      }
-    }
-
-    function salirPantallaCompleta() {
-        console.log("Intentando salir de pantalla completa");
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch(err => console.error("Error exitFullscreen:", err));
-      } else if (document.webkitExitFullscreen) { /* Safari */
-        document.webkitExitFullscreen();
-      } else if (document.msExitFullscreen) { /* IE11 */
-        document.msExitFullscreen();
-      } else {
-          console.warn("API para salir de Fullscreen no encontrada.");
-      }
-    }
-
-    // Verificar si estamos en pantalla completa (considerando prefijos)
-    function estaEnPantallaCompleta() {
-        return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
-    }
-
-
   // --- Manejo Táctil Visor (Listeners en imageViewer) ---
   function getDistance(touches) { if (touches.length < 2) return 0; const dx = touches[0].clientX - touches[1].clientX; const dy = touches[0].clientY - touches[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
   function getMidpoint(touches) { if (touches.length < 2) return { x: 0, y: 0}; return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
@@ -231,33 +192,26 @@
   startBtn.onclick = requestPermissionAndStart;
   visualizeBtn.onclick = () => fileInput.click();
   fileInput.onchange = handleFileSelect;
-  closeViewerBtn.onclick = resetUI; // Llama a resetUI que revoca URLs y sale de FS si es necesario
+  closeViewerBtn.onclick = resetUI;
   takeFirstPhotoBtn.onclick = () => { triggerFlash(); firstImageData = takePhoto(); progress.innerText = "Mueve ~5cm der."; takeFirstPhotoBtn.style.display = 'none'; takeSecondPhotoBtn.style.display = 'block'; };
   takeSecondPhotoBtn.onclick = () => { triggerFlash(); const secondImageData = takePhoto(); progress.innerText = "Proc..."; const img1 = new Image(); const img2 = new Image(); img1.onload = () => { img2.onload = () => { const combinedCanvas = document.createElement('canvas'); const combinedCtx = combinedCanvas.getContext('2d'); combinedCanvas.width = img1.width + img2.width; combinedCanvas.height = Math.max(img1.height, img2.height); combinedCtx.drawImage(img1, 0, 0); combinedCtx.drawImage(img2, img1.width, 0); const combinedImageURL = combinedCanvas.toDataURL('image/jpeg'); resultImage.src = combinedImageURL; resultModal.style.display = 'flex'; progress.innerText = ''; takeSecondPhotoBtn.style.display = 'none'; }; img2.src = secondImageData; }; img1.src = firstImageData; };
   closeResultModalBtn.onclick = () => { resetUI(); };
   window.onclick = (event) => { if (event.target == resultModal) { resetUI(); } };
   saveBtn.onclick = () => { const link = document.createElement('a'); link.href = resultImage.src; link.download = 'foto-3d-captura.jpg'; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
 
-  // Listener para el botón de Fullscreen
+  // --- Listener para el botón Fullscreen Simulado ---
   fullscreenBtn.addEventListener('click', () => {
-      const elemento = imageViewer; // Intentar poner el visor en pantalla completa
-      if (!estaEnPantallaCompleta()) {
-          entrarPantallaCompleta(elemento);
+      const elemento = imageViewer; // El elemento a "maximizar"
+      if (elemento.classList.contains('fullscreen-simulated')) {
+          elemento.classList.remove('fullscreen-simulated');
+          fullscreenBtn.textContent = "Ampliar"; // Restaurar texto
+          console.log("Saliendo de fullscreen simulado");
       } else {
-          salirPantallaCompleta();
+          elemento.classList.add('fullscreen-simulated');
+          fullscreenBtn.textContent = "Reducir"; // Cambiar texto
+          console.log("Entrando a fullscreen simulado");
       }
   });
-
-  // Listeners opcionales para cambio de estado fullscreen
-    document.addEventListener('fullscreenchange', () => {
-        console.log('Evento fullscreenchange. Estado:', document.fullscreenElement ? 'ON' : 'OFF');
-        // Aquí podrías cambiar el texto/icono del botón fullscreenBtn
-    });
-    document.addEventListener('webkitfullscreenchange', () => { // Para Safari
-        console.log('Evento webkitfullscreenchange. Estado:', document.webkitFullscreenElement ? 'ON' : 'OFF');
-         // Aquí podrías cambiar el texto/icono del botón fullscreenBtn
-    });
-
 
   // --- Inicializar UI al cargar ---
   resetUI();
