@@ -35,6 +35,7 @@ let displacement = 0;  // Desplazamiento acumulado
 let previousAcceleration = 0;  // Aceleración anterior para detectar cambios
 
 const smoothingFactor = 0.1;  // Factor para suavizar el ruido (puedes ajustarlo)
+const threshold = 100;  // Umbral de desplazamiento más alto para que sea más difícil activar el movimiento
 
 // Iniciar cámara
 function startCamera() {
@@ -105,14 +106,16 @@ window.addEventListener('devicemotion', (event) => {
   // Calcular velocidad acumulada
   velocity += filteredAcceleration;  // Integración de aceleración para obtener velocidad
 
-  // Calcular desplazamiento acumulado
-  displacement += velocity;  // Integración de velocidad para obtener desplazamiento
+  // Solo contar el desplazamiento cuando la velocidad es significativa (esto reduce la sensibilidad)
+  if (Math.abs(velocity) > 1) { // Solo considerar si la velocidad es mayor a un umbral
+    displacement += velocity;  // Integración de velocidad para obtener desplazamiento
+  }
 
   // Mostrar el movimiento acumulado en la interfaz
   document.getElementById('progress').innerText = `Movimiento detectado: ${Math.abs(displacement).toFixed(2)} unidades`;
 
   // Si el desplazamiento es suficiente (ajustamos el umbral)
-  if (Math.abs(displacement) > 30) {  // Aquí puedes ajustar el valor para que sea más preciso
+  if (Math.abs(displacement) > threshold) {  // Aumentamos el umbral para que el movimiento sea más grande
     startTracking = false;
     document.getElementById('progress').innerText = "¡Listo! Ahora toma la segunda foto.";
     document.getElementById('takeSecondPhoto').style.display = 'block';
