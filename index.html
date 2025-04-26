@@ -2,146 +2,360 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Foto 3D</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Cámara 3D Estilo iOS</title>
   <style>
-    video, canvas {
-      width: 100%;
-      max-width: 400px;
-      margin-bottom: 10px;
+    /* Reset y Estilos Base */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
+
+    html, body {
+      height: 100%;
+      overflow: hidden; /* Evitar scroll */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      background-color: #000;
+      color: #fff;
+    }
+
+    /* Visor de la cámara */
+    #video {
+      width: 100%;
+      flex-grow: 1; /* Ocupa el espacio restante */
+      object-fit: cover; /* Cubre el área sin distorsión */
+      display: block; /* Asegura que el video se muestre */
+    }
+
+    /* Contenedor de controles inferior */
+    #controls-container {
+      background-color: #000; /* Fondo negro sólido */
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      flex-shrink: 0; /* Evita que se encoja */
+    }
+
     #progress {
-      margin: 10px 0;
-      font-size: 18px;
-    }
-    #takeSecondPhoto {
-      display: none;
-    }
-
-    /* Animación para mostrar las imágenes con suavidad */
-    .image-container {
-      opacity: 0;
-      transition: opacity 1s ease-in-out;
+      margin-bottom: 15px;
+      font-size: 0.9em;
+      color: #ccc;
+      text-align: center;
+      min-height: 2.5em; /* Espacio para el texto */
+      line-height: 1.4;
     }
 
-    .image-container.show {
-      opacity: 1;
+    /* Estilos de botones */
+    button {
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1em;
+      margin: 5px 0;
+      padding: 10px 15px;
+      border-radius: 8px;
     }
 
-    .image-container img {
-      width: 100%;
-      max-width: 400px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    /* Botón de inicio */
+    #startBtn {
+      background-color: #333;
+      padding: 12px 25px;
+      font-weight: bold;
     }
 
-    /* Animación de la foto */
+    /* Botones de Obturador (Tomar Foto) */
+    #takeFirstPhoto, #takeSecondPhoto {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%; /* Círculo */
+      background-color: rgba(255, 255, 255, 0.9); /* Blanco semi-transparente */
+      border: 4px solid #fff; /* Borde blanco grueso */
+      padding: 0; /* Reset padding */
+      margin: 10px 0; /* Espacio vertical */
+      position: relative;
+      /* Opcional: círculo interior para más parecido */
+      /* Se puede lograr con un pseudo-elemento o span interno */
+    }
+
+    #takeFirstPhoto:active, #takeSecondPhoto:active {
+        background-color: rgba(200, 200, 200, 0.9); /* Efecto al presionar */
+    }
+
+
+    /* Lienzo oculto para procesar */
     #canvas {
       display: none;
     }
+
+    /* Contenedor de previsualización original (ya no se usa visiblemente) */
+    #photoPreview {
+       display: none; /* Oculto, usamos el modal */
+    }
+
+    /* --- Estilos del Modal Polaroid --- */
+    .modal {
+      display: none; /* Oculto por defecto */
+      position: fixed; /* Se queda fijo en la pantalla */
+      z-index: 1000; /* Por encima de todo */
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto; /* Scroll si el contenido es muy grande */
+      background-color: rgba(0, 0, 0, 0.7); /* Fondo oscuro semi-transparente */
+      justify-content: center;
+      align-items: center;
+      padding: 20px; /* Espacio para que no toque bordes */
+    }
+
+    .modal-content {
+      background-color: #fff; /* Fondo blanco de la polaroid */
+      margin: auto;
+      padding: 15px; /* Espacio interno */
+      padding-bottom: 60px; /* Espacio extra abajo para el look polaroid */
+      border: 1px solid #888;
+      width: auto; /* Ajusta al contenido */
+      max-width: 90%; /* Máximo ancho */
+      max-height: 90vh; /* Máxima altura */
+      position: relative; /* Para posicionar el botón de cierre y guardar */
+      border-radius: 3px; /* Bordes ligeramente redondeados */
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      text-align: center; /* Centrar imagen y botón */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .modal-content img {
+      display: block;
+      max-width: 100%;
+      max-height: calc(90vh - 120px); /* Ajusta altura máxima de imagen */
+      height: auto;
+      margin-bottom: 15px; /* Espacio entre imagen y borde inferior */
+      border: 1px solid #eee; /* Borde sutil para la imagen */
+    }
+
+    /* Botón de cerrar */
+    .close-btn {
+      color: #aaa;
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .close-btn:hover,
+    .close-btn:focus {
+      color: #555;
+      text-decoration: none;
+    }
+
+    /* Botón de guardar dentro del modal */
+    #saveBtn {
+      background-color: #007AFF; /* Azul típico de iOS */
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+      position: absolute; /* Posicionar relativo al modal-content */
+      bottom: 15px; /* En la parte inferior del espacio extra */
+      left: 50%;
+      transform: translateX(-50%); /* Centrar horizontalmente */
+    }
+
+    #saveBtn:hover {
+      background-color: #005ecb;
+    }
+
   </style>
 </head>
 <body>
 
 <video id="video" autoplay muted playsinline></video>
-<canvas id="canvas"></canvas>
+<canvas id="canvas"></canvas> <div id="controls-container">
+  <div id="progress"></div>
+  <button id="startBtn">Iniciar Cámara</button>
+  <button id="takeFirstPhoto" style="display:none;"></button> <button id="takeSecondPhoto" style="display:none;"></button> </div>
 
-<div id="progress"></div>
+<div id="photoPreview"></div>
 
-<button id="startBtn">Iniciar Cámara</button>
-<button id="takeFirstPhoto" style="display:none;">Tomar Primera Foto</button>
-<button id="takeSecondPhoto" style="display:none;">Tomar Segunda Foto</button>
+<div id="polaroidModal" class="modal">
+  <div class="modal-content">
+    <span id="closeModalBtn" class="close-btn">&times;</span>
+    <img id="polaroidImage" src="" alt="Foto 3D Generada">
+    <button id="saveBtn">Guardar Foto</button>
+  </div>
+</div>
 
-<div id="photoPreview" class="image-container"></div>
 
 <script>
-let firstImageData = null;
+  let firstImageData = null;
+  let stream = null; // Guardar referencia al stream para detenerlo
 
-// Iniciar cámara
-function startCamera() {
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-    .then(stream => {
-      const video = document.getElementById('video');
-      video.srcObject = stream;
-    })
-    .catch(err => {
-      alert('No se pudo acceder a la cámara: ' + err.message);
-    });
-}
-
-// Tomar foto
-function takePhoto() {
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg');
-}
+  const progress = document.getElementById('progress');
+  const startBtn = document.getElementById('startBtn');
+  const takeFirstPhotoBtn = document.getElementById('takeFirstPhoto');
+  const takeSecondPhotoBtn = document.getElementById('takeSecondPhoto');
+  const polaroidModal = document.getElementById('polaroidModal');
+  const polaroidImage = document.getElementById('polaroidImage');
+  const closeModalBtn = document.getElementById('closeModalBtn');
+  const saveBtn = document.getElementById('saveBtn');
+  const controlsContainer = document.getElementById('controls-container'); // Referencia al contenedor
 
-// Solicitar permiso en iPhone
-function requestPermission() {
-  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-    DeviceOrientationEvent.requestPermission()
-      .then(response => {
-        if (response === 'granted') {
-          startCamera();
-          document.getElementById('startBtn').style.display = 'none';
-          document.getElementById('takeFirstPhoto').style.display = 'block';
-        } else {
-          alert('Permiso denegado');
-        }
+  // Iniciar cámara
+  function startCamera() {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(mediaStream => {
+        stream = mediaStream; // Guardar stream
+        video.srcObject = stream;
+        video.style.display = 'block'; // Asegurarse que el video es visible
+        startBtn.style.display = 'none';
+        takeFirstPhotoBtn.style.display = 'block';
+        takeSecondPhotoBtn.style.display = 'none';
+        controlsContainer.style.display = 'flex'; // Mostrar controles
+        progress.innerText = "Toma la primera foto";
       })
-      .catch(console.error);
-  } else {
-    // Android no necesita pedir permiso
-    startCamera();
-    document.getElementById('startBtn').style.display = 'none';
-    document.getElementById('takeFirstPhoto').style.display = 'block';
+      .catch(err => {
+        console.error('Error al acceder a la cámara:', err);
+        alert('No se pudo acceder a la cámara: ' + err.message);
+        resetUI(); // Resetear si hay error
+      });
   }
-}
 
-document.getElementById('startBtn').onclick = requestPermission;
+  // Detener cámara
+  function stopCamera() {
+      if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+          stream = null;
+          video.srcObject = null;
+          console.log("Cámara detenida");
+      }
+  }
 
-document.getElementById('takeFirstPhoto').onclick = () => {
-  firstImageData = takePhoto();
-  document.getElementById('progress').innerText = "¡Ahora mueve el celular aproximadamente 5 cm a la derecha y toma la segunda foto!";
-  document.getElementById('takeFirstPhoto').style.display = 'none';
-  document.getElementById('takeSecondPhoto').style.display = 'block';
-};
+  // Tomar foto
+  function takePhoto() {
+    const ctx = canvas.getContext('2d');
+    // Asegurar que el canvas tenga el tamaño correcto del video renderizado
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg');
+  }
 
-document.getElementById('takeSecondPhoto').onclick = () => {
-  const secondImageData = takePhoto();
+  // Solicitar permiso (necesario en iOS para DeviceOrientation, adaptado para cámara)
+  function requestPermissionAndStart() {
+    // La lógica de permiso de DeviceOrientation no es necesaria para getUserMedia
+    // getUserMedia pedirá permiso directamente si es necesario.
+    // Simplificamos: intentar iniciar la cámara directamente.
+    startCamera();
+  }
 
-  // Mostrar la previsualización de las fotos
-  const photoPreview = document.getElementById('photoPreview');
-  photoPreview.classList.add('show');  // Activar animación
+  // Resetear la interfaz al estado inicial
+  function resetUI() {
+      stopCamera(); // Detener la cámara activa si existe
+      video.style.display = 'block'; // Mostrar el área del video (aunque esté negro)
+      startBtn.style.display = 'block';
+      takeFirstPhotoBtn.style.display = 'none';
+      takeSecondPhotoBtn.style.display = 'none';
+      progress.innerText = '';
+      polaroidModal.style.display = 'none';
+      controlsContainer.style.display = 'flex'; // Mostrar controles
+      firstImageData = null;
+  }
 
-  const img1 = new Image();
-  const img2 = new Image();
+  // --- Event Listeners ---
+  startBtn.onclick = requestPermissionAndStart;
 
-  img1.onload = () => {
-    img2.onload = () => {
-      const combinedCanvas = document.createElement('canvas');
-      const combinedCtx = combinedCanvas.getContext('2d');
-
-      combinedCanvas.width = img1.width + img2.width;
-      combinedCanvas.height = img1.height;
-
-      combinedCtx.drawImage(img1, 0, 0);
-      combinedCtx.drawImage(img2, img1.width, 0);
-
-      const combinedImage = combinedCanvas.toDataURL('image/jpeg');
-      const finalImg = new Image();
-      finalImg.src = combinedImage;
-      photoPreview.innerHTML = '';  // Limpiar el contenedor antes de agregar la nueva imagen
-      photoPreview.appendChild(finalImg);
-    };
-    img2.src = secondImageData;
+  takeFirstPhotoBtn.onclick = () => {
+    firstImageData = takePhoto();
+    progress.innerText = "¡OK! Ahora mueve el móvil ~5cm a la derecha y toma la segunda foto.";
+    takeFirstPhotoBtn.style.display = 'none';
+    takeSecondPhotoBtn.style.display = 'block';
   };
-  img1.src = firstImageData;
-};
+
+  takeSecondPhotoBtn.onclick = () => {
+    const secondImageData = takePhoto();
+    progress.innerText = "Procesando..."; // Mensaje mientras se combinan
+
+    // Ocultar controles y video mientras se muestra el modal
+    // video.style.display = 'none'; // Opcional: ocultar video
+    // controlsContainer.style.display = 'none'; // Opcional: ocultar controles
+
+    const img1 = new Image();
+    const img2 = new Image();
+
+    img1.onload = () => {
+      img2.onload = () => {
+        const combinedCanvas = document.createElement('canvas');
+        const combinedCtx = combinedCanvas.getContext('2d');
+
+        // Crear imagen lado a lado (anaglifo simple o side-by-side)
+        // Aquí hacemos side-by-side
+        combinedCanvas.width = img1.width + img2.width;
+        combinedCanvas.height = Math.max(img1.height, img2.height); // Usar la altura máxima
+
+        combinedCtx.drawImage(img1, 0, 0);
+        combinedCtx.drawImage(img2, img1.width, 0);
+
+        const combinedImageURL = combinedCanvas.toDataURL('image/jpeg');
+
+        // Mostrar en el modal Polaroid
+        polaroidImage.src = combinedImageURL;
+        polaroidModal.style.display = 'flex'; // Usar flex para centrar
+
+        // Limpiar progreso y botones (se resetean al cerrar modal)
+        progress.innerText = '';
+        takeSecondPhotoBtn.style.display = 'none';
+
+      };
+      img2.src = secondImageData;
+    };
+    img1.src = firstImageData;
+
+    // Detener la cámara una vez que se toman las fotos y se muestra el modal
+    // stopCamera(); // Comentado - mejor detener al cerrar modal o reiniciar
+  };
+
+  // Cerrar el modal
+  closeModalBtn.onclick = () => {
+    resetUI(); // Llama a la función para resetear la interfaz
+  };
+
+  // Cerrar modal si se hace clic fuera del contenido (opcional)
+  window.onclick = (event) => {
+    if (event.target == polaroidModal) {
+       resetUI(); // Llama a la función para resetear la interfaz
+    }
+  };
+
+  // Guardar la imagen
+  saveBtn.onclick = () => {
+    const link = document.createElement('a');
+    link.href = polaroidImage.src;
+    link.download = 'foto-3d-polaroid.jpg'; // Nombre del archivo
+    document.body.appendChild(link); // Necesario en algunos navegadores
+    link.click();
+    document.body.removeChild(link); // Limpiar
+  };
+
+  // Inicializar UI al cargar
+  resetUI();
+
 </script>
 
 </body>
