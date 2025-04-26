@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Cámara y Visor 3D v3</title>
-  <style>
+  <title>Cámara y Visor 3D v3.1</title> <style>
     /* Reset y Estilos Base */
     * {
       box-sizing: border-box;
@@ -19,7 +18,7 @@
       overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       display: flex; flex-direction: column; background-color: #000; color: #fff;
     }
-    /* --- Estilos Cámara (sin cambios) --- */
+    /* --- Estilos Cámara --- */
     #mainInterface { display: flex; flex-direction: column; height: 100%; width: 100%; }
     .viewport-container { position: relative; flex-grow: 1; overflow: hidden; display: flex; background-color: #000; }
     #video { width: 100%; height: 100%; object-fit: cover; display: block; z-index: 1; }
@@ -35,7 +34,7 @@
     #takeFirstPhoto, #takeSecondPhoto { width: 70px; height: 70px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.9); border: 4px solid #fff; padding: 0; margin: 10px 0; position: relative; }
     #takeFirstPhoto:active, #takeSecondPhoto:active { background-color: rgba(200, 200, 200, 0.9); }
     #canvas { display: none; } #photoPreview { display: none; } #fileInput { display: none; }
-    /* --- Estilos Modal Resultado (sin cambios) --- */
+    /* --- Estilos Modal Resultado --- */
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100dvh; overflow: auto; background-color: rgba(0, 0, 0, 0.8); justify-content: center; align-items: center; padding: 15px; }
     .modal-content { background-color: #282828; color: #fff; margin: auto; padding: 25px; width: auto; max-width: 90%; max-height: 90dvh; position: relative; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.5); text-align: center; display: flex; flex-direction: column; align-items: center; }
     .modal-content img { display: block; max-width: 100%; max-height: calc(90dvh - 150px); height: auto; margin-bottom: 20px; border-radius: 6px; }
@@ -44,44 +43,31 @@
     #saveBtn { background-color: #007AFF; color: white; padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: bold; margin-top: 10px; }
     #saveBtn:hover { background-color: #005ecb; }
 
-    /* --- Estilos del Visor de Imágenes (MODIFICADO) --- */
+    /* --- Estilos del Visor de Imágenes --- */
     #imageViewer {
         display: none; position: fixed; top: 0; left: 0;
         width: 100vw; height: 100dvh; background-color: #000;
-        z-index: 2000; touch-action: none;
+        z-index: 2000; touch-action: none; /* Importante */
     }
 
-    #splitViewContainer { /* Contenedor principal del visor, ahora solo usa flex */
-        display: flex; /* Pone los contenedores de mitad lado a lado */
-        width: 100%;
-        height: 100%;
-        /* Ya no necesita overflow: hidden ni position: relative */
+    #splitViewContainer {
+        display: flex; width: 100%; height: 100%;
     }
 
-    .image-half-container { /* NUEVO: Contenedor para cada mitad */
-        width: 50%;        /* Ocupa la mitad del ancho */
-        height: 100%;       /* Ocupa toda la altura */
-        overflow: hidden;   /* ! La clave: corta el contenido de la imagen interna ! */
-        position: relative; /* ! Necesario para posicionar la imagen interna absolutamente ! */
+    .image-half-container {
+        width: 50%; height: 100%;
+        overflow: hidden; /* Clave */
+        position: relative; /* Clave */
     }
 
-    #leftImage, #rightImage { /* La imagen DENTRO de su contenedor de mitad */
-        position: absolute; /* Posicionada relativa a .image-half-container */
-        top: 0;
-        left: 0;
-        width: 100%;  /* Ocupa el 100% del contenedor de mitad (que es 50% del total) */
-        height: 100%; /* Ocupa el 100% de la altura */
-        object-fit: cover; /* Ajuste de imagen */
-        transform-origin: center center; /* Origen del zoom/pan */
-        will-change: transform; /* Optimización */
-        background-color: #111; /* Fondo por si acaso */
-        /* Importante: Ya no necesitamos left: 50% para #rightImage,
-           porque su contenedor (.image-half-container) ya está en la posición correcta */
+    #leftImage, #rightImage {
+        position: absolute; top: 0; left: 0;
+        width: 100%; height: 100%;
+        object-fit: cover;
+        transform-origin: center center;
+        will-change: transform;
+        background-color: #111;
     }
-
-    /* Botón de cerrar específico del visor */
-    #closeViewerBtn { /* Ya no es necesario aquí, usa .close-btn */ }
-
   </style>
 </head>
 <body>
@@ -91,7 +77,9 @@
         <video id="video" autoplay muted playsinline></video>
         <div id="flashOverlay"></div>
     </div>
-    <canvas id="canvas"></canvas> <div id="controls-container">
+    <canvas id="canvas"></canvas>
+
+    <div id="controls-container">
       <div id="progress"></div>
       <div id="initial-buttons">
           <button id="startBtn">Iniciar Cámara</button>
@@ -150,9 +138,8 @@
   const saveBtn = document.getElementById('saveBtn');
 
   // Visor de Imágenes
-  const imageViewer = document.getElementById('imageViewer');
+  const imageViewer = document.getElementById('imageViewer'); // Listener target
   const splitViewContainer = document.getElementById('splitViewContainer');
-  // No necesitamos leftContainer/rightContainer en JS si no interactuamos directamente con ellos
   const leftImage = document.getElementById('leftImage');
   const rightImage = document.getElementById('rightImage');
   const closeViewerBtn = document.getElementById('closeViewerBtn');
@@ -177,15 +164,50 @@
     }
   }
 
-  // --- Funciones Cámara (sin cambios) ---
-  function triggerFlash() { /* ... */ }
-  flashOverlay.addEventListener('animationend', () => { /* ... */ });
-  function startCamera() { /* ... */ }
-  function stopCamera() { /* ... */ }
-  function takePhoto() { /* ... */ }
-  function requestPermissionAndStart() { startCamera(); }
+  // --- Funciones Cámara ---
+    function triggerFlash() {
+        flashOverlay.style.display = 'block';
+        flashOverlay.classList.add('flash');
+    }
+    flashOverlay.addEventListener('animationend', () => {
+        flashOverlay.classList.remove('flash');
+        flashOverlay.style.display = 'none';
+    });
+    function startCamera() {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(mediaStream => {
+          stream = mediaStream;
+          video.srcObject = stream;
+          video.style.display = 'block';
+          initialButtonsContainer.style.display = 'none';
+          takeFirstPhotoBtn.style.display = 'block';
+          takeSecondPhotoBtn.style.display = 'none';
+          controlsContainer.style.display = 'flex';
+          progress.innerText = "Toma la primera foto";
+        })
+        .catch(err => {
+          console.error('Error al acceder a la cámara:', err);
+          alert('No se pudo acceder a la cámara: ' + err.message);
+          resetUI();
+        });
+    }
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+            video.srcObject = null;
+        }
+    }
+    function takePhoto() {
+      const ctx = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/jpeg');
+    }
+    function requestPermissionAndStart() { startCamera(); }
 
-  // --- Modificado resetUI para revocar URLs (sin cambios) ---
+  // --- Modificado resetUI para revocar URLs ---
   function resetUI() {
       stopCamera();
       revokePreviousObjectURLs();
@@ -205,7 +227,6 @@
   }
 
   // --- Funciones Visor de Imágenes ---
-
   function resetViewerState() {
     currentScale = 1;
     currentTranslateX = 0;
@@ -214,14 +235,14 @@
     fileInput.value = null;
   }
 
-  // ApplyTransform sigue igual: aplica la misma tfm a ambas imágenes
+  // Aplica la misma TFM a ambas imágenes
   function applyTransform() {
       const transformValue = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
       leftImage.style.transform = transformValue;
       rightImage.style.transform = transformValue;
   }
 
-  // --- Helper para convertir canvas a Blob con Promise (sin cambios) ---
+  // Helper para convertir canvas a Blob con Promise
   function canvasToBlob(canvas, mimeType = 'image/jpeg', quality = 0.85) {
     return new Promise((resolve, reject) => {
         if (!canvas.toBlob) { reject(new Error("Canvas.toBlob() no soportado")); return; }
@@ -232,128 +253,137 @@
     });
   }
 
-
-  // --- handleFileSelect (Split con Object URL / toBlob - SIN CAMBIOS EN JS) ---
-  // La versión anterior que funcionaba para mostrar la imagen ya hace el split
-  // y usa Object URLs. La corrección es puramente estructural (HTML/CSS).
+  // handleFileSelect (Split con Object URL / toBlob)
   async function handleFileSelect(event) {
     console.log("handleFileSelect llamado (Split con Object URL)");
     const file = event.target.files[0];
-    if (!file || !file.type.startsWith('image/')) {
-        alert('Por favor, selecciona un archivo de imagen.');
-        resetUI(); return;
-    }
+    if (!file || !file.type.startsWith('image/')) { alert('Por favor, selecciona un archivo de imagen.'); resetUI(); return; }
     console.log("Archivo seleccionado:", file.name, file.type);
-
     revokePreviousObjectURLs();
-
     let originalFileURL = null;
     try {
         originalFileURL = URL.createObjectURL(file);
         objectURLsToRevoke.push(originalFileURL);
         console.log("Original File Object URL creado");
-    } catch (error) {
-        console.error("Error creando Object URL para el archivo original:", error);
-        alert("Error al crear URL para el archivo.");
-        resetUI(); return;
-    }
+    } catch (error) { console.error("Error creando Object URL para el archivo original:", error); alert("Error al crear URL para el archivo."); resetUI(); return; }
 
     const img = new Image();
     img.onload = async () => {
         console.log("Image onload. Dimensiones:", img.naturalWidth, "x", img.naturalHeight);
         if (img.naturalWidth <= 0 || img.naturalHeight <= 0) { alert("Dimensiones inválidas."); resetUI(); return; }
         if (img.naturalWidth < 2) { alert("Imagen demasiado estrecha."); resetUI(); return; }
-
         try {
-            const canvasLeft = document.createElement('canvas');
-            const ctxLeft = canvasLeft.getContext('2d');
-            const leftWidth = Math.floor(img.naturalWidth / 2);
-            const height = img.naturalHeight;
+            const canvasLeft = document.createElement('canvas'); const ctxLeft = canvasLeft.getContext('2d');
+            const leftWidth = Math.floor(img.naturalWidth / 2); const height = img.naturalHeight;
             canvasLeft.width = leftWidth; canvasLeft.height = height;
             console.log("Dibujando mitad izquierda...");
             ctxLeft.drawImage(img, 0, 0, leftWidth, height, 0, 0, leftWidth, height);
-
-            const canvasRight = document.createElement('canvas');
-            const ctxRight = canvasRight.getContext('2d');
-            const rightWidth = img.naturalWidth - leftWidth;
-            const sourceXRight = leftWidth;
+            const canvasRight = document.createElement('canvas'); const ctxRight = canvasRight.getContext('2d');
+            const rightWidth = img.naturalWidth - leftWidth; const sourceXRight = leftWidth;
             canvasRight.width = rightWidth; canvasRight.height = height;
             console.log("Dibujando mitad derecha...");
             ctxRight.drawImage(img, sourceXRight, 0, rightWidth, height, 0, 0, rightWidth, height);
-
             console.log("Convirtiendo ambos canvas a Blobs (JPEG)...");
             const [blobLeft, blobRight] = await Promise.all([
                 canvasToBlob(canvasLeft, 'image/jpeg', 0.85),
                 canvasToBlob(canvasRight, 'image/jpeg', 0.85)
             ]);
             console.log("Blobs generados.");
-
             let leftBlobURL = null; let rightBlobURL = null;
             try {
-                leftBlobURL = URL.createObjectURL(blobLeft);
-                objectURLsToRevoke.push(leftBlobURL);
-                rightBlobURL = URL.createObjectURL(blobRight);
-                objectURLsToRevoke.push(rightBlobURL);
+                leftBlobURL = URL.createObjectURL(blobLeft); objectURLsToRevoke.push(leftBlobURL);
+                rightBlobURL = URL.createObjectURL(blobRight); objectURLsToRevoke.push(rightBlobURL);
                 console.log("Object URLs de Blobs creados.");
-            } catch (error) {
-                 console.error("Error creando Object URLs desde Blobs:", error);
-                 alert("Error al crear URLs para las imágenes procesadas.");
-                 resetUI(); return;
-            }
-
+            } catch (error) { console.error("Error creando Object URLs desde Blobs:", error); alert("Error al crear URLs para las imágenes procesadas."); resetUI(); return; }
             console.log("Asignando Object URLs a las imágenes del visor...");
-            leftImage.src = leftBlobURL;
-            rightImage.src = rightBlobURL;
-
+            leftImage.src = leftBlobURL; rightImage.src = rightBlobURL;
             console.log("Mostrando el visor...");
             resetViewerState();
-            imageViewer.style.display = 'block';
-            mainInterface.style.display = 'none';
-
-        } catch (error) {
-            console.error("Error durante el procesamiento y división:", error);
-            alert("Error al procesar la imagen: " + error.message);
-            resetUI();
-        }
+            imageViewer.style.display = 'block'; mainInterface.style.display = 'none';
+        } catch (error) { console.error("Error durante el procesamiento y división:", error); alert("Error al procesar la imagen: " + error.message); resetUI(); }
     }; // Fin img.onload
-
-    img.onerror = function(e) {
-        console.error("Image onerror al cargar desde:", originalFileURL ? originalFileURL.substring(0,100) : "URL inválida");
-        alert('Error: No se pudo cargar la imagen fuente seleccionada desde Object URL.');
-        resetUI();
-    };
+    img.onerror = function(e) { console.error("Image onerror al cargar desde:", originalFileURL ? originalFileURL.substring(0,100) : "URL inválida"); alert('Error: No se pudo cargar la imagen fuente seleccionada desde Object URL.'); resetUI(); };
     console.log("Asignando Object URL del archivo original a img.src");
     img.src = originalFileURL;
-}
+  }
   // --- FIN handleFileSelect ---
 
+  // --- Manejo Táctil del Visor (Listeners en imageViewer) ---
+  function getDistance(touches) {
+      if (touches.length < 2) return 0;
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+  }
+  function getMidpoint(touches) {
+       if (touches.length < 2) return { x: 0, y: 0};
+      return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 };
+  }
 
-  // --- Manejo Táctil del Visor (Sin cambios en la lógica de cálculo) ---
-  function getDistance(touches) { /* ... */ }
-  function getMidpoint(touches) { /* ... */ }
-  splitViewContainer.addEventListener('touchstart', (e) => { /* ... */ }, { passive: false });
-  splitViewContainer.addEventListener('touchmove', (e) => { /* ... */ }, { passive: false });
-  splitViewContainer.addEventListener('touchend', (e) => { /* ... */ });
+  // *** EVENT LISTENERS AHORA EN imageViewer ***
+  imageViewer.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const touches = e.touches;
+      console.log('touchstart - touches:', touches.length); // DEBUG
+      if (touches.length === 1) {
+          console.log('touchstart - Panning started'); // DEBUG
+          isPanning = true; isZooming = false; startX = touches[0].clientX; startY = touches[0].clientY;
+          initialTranslateX = currentTranslateX; initialTranslateY = currentTranslateY;
+      } else if (touches.length >= 2) {
+          console.log('touchstart - Zooming started'); // DEBUG
+          isZooming = true; isPanning = false; initialPinchDistance = getDistance(touches);
+          initialTranslateX = currentTranslateX; initialTranslateY = currentTranslateY;
+          console.log('touchstart - initialPinchDistance:', initialPinchDistance); // DEBUG
+      }
+  }, { passive: false });
+
+  imageViewer.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touches = e.touches;
+      if (isPanning && touches.length === 1) {
+          const dx = touches[0].clientX - startX; const dy = touches[0].clientY - startY;
+          currentTranslateX = initialTranslateX + dx; currentTranslateY = initialTranslateY + dy;
+          applyTransform();
+      } else if (isZooming && touches.length >= 2) {
+          const currentDistance = getDistance(touches);
+          console.log('touchmove - currentDistance:', currentDistance, 'initialPinchDistance:', initialPinchDistance); // DEBUG
+          if (initialPinchDistance <= 0) { console.log('touchmove - Invalid initialPinchDistance'); initialPinchDistance = currentDistance; if (initialPinchDistance <= 0) return; }
+          const scaleRatio = currentDistance / initialPinchDistance;
+          let potentialNewScale = currentScale * scaleRatio;
+          potentialNewScale = Math.max(1, Math.min(potentialNewScale, 10)); // Clamp scale
+          console.log('touchmove - scaleRatio:', scaleRatio, 'potentialNewScale:', potentialNewScale); // DEBUG
+          currentScale = potentialNewScale;
+          initialPinchDistance = currentDistance; // Actualizar para el siguiente movimiento incremental
+          applyTransform();
+      }
+  }, { passive: false });
+
+  imageViewer.addEventListener('touchend', (e) => {
+      const touches = e.touches;
+      console.log('touchend - touches remaining:', touches.length); // DEBUG
+      if (touches.length < 2) { if (isZooming) console.log('touchend - Zooming finished'); isZooming = false; }
+      if (touches.length < 1) { if (isPanning) console.log('touchend - Panning finished'); isPanning = false; }
+      else if (touches.length === 1) {
+           if (!isPanning) { console.log('touchend - Switching from Zoom to Pan'); isPanning = true; isZooming = false; startX = touches[0].clientX; startY = touches[0].clientY; initialTranslateX = currentTranslateX; initialTranslateY = currentTranslateY; }
+      }
+      if (!isZooming) { initialPinchDistance = 0; }
+  });
+  // --- Fin Manejo Táctil ---
 
 
-  // --- Event Listeners Botones (Sin cambios) ---
+  // --- Event Listeners Botones ---
   startBtn.onclick = requestPermissionAndStart;
   visualizeBtn.onclick = () => fileInput.click();
   fileInput.onchange = handleFileSelect;
-  closeViewerBtn.onclick = resetUI;
-  takeFirstPhotoBtn.onclick = () => { /* ... */ };
-  takeSecondPhotoBtn.onclick = () => { /* ... */ };
-  closeResultModalBtn.onclick = () => { resetUI(); };
-  window.onclick = (event) => { if (event.target == resultModal) { resetUI(); } };
-  saveBtn.onclick = () => { /* ... */ };
+  closeViewerBtn.onclick = resetUI; // Llama a resetUI que revoca URLs
+  takeFirstPhotoBtn.onclick = () => { triggerFlash(); firstImageData = takePhoto(); progress.innerText = "¡OK! Ahora mueve el móvil ~5cm a la derecha y toma la segunda foto."; takeFirstPhotoBtn.style.display = 'none'; takeSecondPhotoBtn.style.display = 'block'; };
+  takeSecondPhotoBtn.onclick = () => { triggerFlash(); const secondImageData = takePhoto(); progress.innerText = "Procesando..."; const img1 = new Image(); const img2 = new Image(); img1.onload = () => { img2.onload = () => { const combinedCanvas = document.createElement('canvas'); const combinedCtx = combinedCanvas.getContext('2d'); combinedCanvas.width = img1.width + img2.width; combinedCanvas.height = Math.max(img1.height, img2.height); combinedCtx.drawImage(img1, 0, 0); combinedCtx.drawImage(img2, img1.width, 0); const combinedImageURL = combinedCanvas.toDataURL('image/jpeg'); resultImage.src = combinedImageURL; resultModal.style.display = 'flex'; progress.innerText = ''; takeSecondPhotoBtn.style.display = 'none'; }; img2.src = secondImageData; }; img1.src = firstImageData; };
+  closeResultModalBtn.onclick = () => { resetUI(); }; // Llama a resetUI
+  window.onclick = (event) => { if (event.target == resultModal) { resetUI(); } }; // Llama a resetUI
+  saveBtn.onclick = () => { const link = document.createElement('a'); link.href = resultImage.src; link.download = 'foto-3d-captura.jpg'; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
 
   // --- Inicializar UI al cargar ---
   resetUI();
-
-// --- Código JS sin cambios se omite por brevedad (...) ---
-// Pegar aquí las implementaciones completas de las funciones omitidas si es necesario
-// (getDistance, getMidpoint, touchstart, touchmove, touchend, triggerFlash, startCamera, etc.)
-// El código anterior YA las incluía, así que deberían estar bien.
 
 </script>
 
