@@ -27,9 +27,9 @@
 
 <script>
 let firstImageData = null;
-let movementX = 0;
 let startTracking = false;
-let startX = null;
+let movement = 0;
+let lastTimestamp = null;
 
 // Iniciar cámara
 function startCamera() {
@@ -58,25 +58,32 @@ document.getElementById('takeFirstPhoto').onclick = () => {
   firstImageData = takePhoto();
   document.getElementById('progress').innerText = "Ahora mueve el teléfono 5cm a la derecha...";
   startTracking = true;
-  startX = null;
+  movement = 0;
+  lastTimestamp = null;
   document.getElementById('takeFirstPhoto').style.display = 'none';
 };
 
-// Escuchar movimiento
-window.addEventListener('deviceorientation', (event) => {
+// Escuchar movimiento lineal
+window.addEventListener('devicemotion', (event) => {
   if (!startTracking) return;
 
-  if (startX === null) {
-    startX = event.gamma; // gamma es el giro izquierda/derecha
+  if (lastTimestamp === null) {
+    lastTimestamp = event.timeStamp;
+    return;
   }
 
-  const deltaX = event.gamma - startX;
+  const dt = (event.timeStamp - lastTimestamp) / 1000; // tiempo en segundos
+  lastTimestamp = event.timeStamp;
 
-  // Mostrar cuánto se ha movido
-  document.getElementById('progress').innerText = `Movido: ${deltaX.toFixed(2)} grados`;
+  // aceleración en el eje X (izquierda-derecha)
+  const ax = event.accelerationIncludingGravity.x || 0;
 
-  // Cuando se mueve suficiente
-  if (Math.abs(deltaX) > 5) { // 5 grados aprox son 5cm (no es exacto pero sirve de referencia móvil)
+  // integrar aceleración para estimar distancia (distancia ≈ aceleración × tiempo²)
+  movement += ax * dt * dt * 500; // el factor 500 es para amplificar y compensar la baja aceleración
+
+  document.getElementById('progress').innerText = `Movido aprox: ${movement.toFixed(2)} cm`;
+
+  if (Math.abs(movement) >= 5) { // si movió 5cm o más
     startTracking = false;
     document.getElementById('progress').innerText = "¡Listo! Ahora toma la segunda foto.";
     document.getElementById('takeSecondPhoto').style.display = 'block';
