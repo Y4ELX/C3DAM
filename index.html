@@ -5,57 +5,313 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Cámara y Visor 3D (Fullscreen Simulado)</title>
   <style>
-    /* Reset y Estilos Base */
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-    html { height: -webkit-fill-available; background-color: #000; }
-    body { height: 100dvh; min-height: -webkit-fill-available; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; background-color: #000; color: #fff; }
-    /* --- Estilos Cámara --- */
-    #mainInterface { display: flex; flex-direction: column; height: 100%; width: 100%; }
-    .viewport-container { position: relative; flex-grow: 1; overflow: hidden; display: flex; background-color: #000; }
-    #video { width: 100%; height: 100%; object-fit: cover; display: block; z-index: 1; }
-    #flashOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: white; opacity: 0; pointer-events: none; z-index: 5; display: none; }
-    @keyframes flashAnimation { 0% { opacity: 0; } 50% { opacity: 0.7; } 100% { opacity: 0; } }
-    #flashOverlay.flash { display: block; animation: flashAnimation 0.3s ease-in-out; }
-    #controls-container { background-color: #000; padding: 15px 20px; display: flex; flex-direction: column; align-items: center; width: 100%; flex-shrink: 0; z-index: 10; position: relative; }
-    #initial-buttons { display: flex; gap: 15px; margin-bottom: 10px; }
-    #progress { margin-bottom: 15px; font-size: 0.9em; color: #ccc; text-align: center; min-height: 2.5em; line-height: 1.4; }
-    button { background: none; border: none; color: #fff; cursor: pointer; font-size: 1em; padding: 10px 15px; border-radius: 8px; background-color: #333; transition: background-color 0.2s ease; }
-    button:active { background-color: #555; }
-    #startBtn, #visualizeBtn { padding: 12px 20px; font-weight: 500; }
-    #takeFirstPhoto, #takeSecondPhoto { width: 70px; height: 70px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.9); border: 4px solid #fff; padding: 0; margin: 10px 0; position: relative; }
-    #takeFirstPhoto:active, #takeSecondPhoto:active { background-color: rgba(200, 200, 200, 0.9); }
-    #canvas { display: none; } #photoPreview { display: none; } #fileInput { display: none; }
-    /* --- Estilos Modal Resultado --- */
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100dvh; overflow: auto; background-color: rgba(0, 0, 0, 0.8); justify-content: center; align-items: center; padding: 15px; }
-    .modal-content { background-color: #282828; color: #fff; margin: auto; padding: 25px; width: auto; max-width: 90%; max-height: 90dvh; position: relative; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.5); text-align: center; display: flex; flex-direction: column; align-items: center; }
-    .modal-content img { display: block; max-width: 100%; max-height: calc(90dvh - 150px); height: auto; margin-bottom: 20px; border-radius: 6px; }
-    .close-btn { color: #ccc; position: absolute; top: 15px; right: 15px; font-size: 30px; font-weight: bold; cursor: pointer; line-height: 1; z-index: 20; padding: 5px; background-color: rgba(0, 0, 0, 0.3); border-radius: 50%; }
-    .close-btn:hover, .close-btn:focus { color: #fff; background-color: rgba(0, 0, 0, 0.6); }
-    #saveBtn { background-color: #007AFF; color: white; padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: bold; margin-top: 10px; }
-    #saveBtn:hover { background-color: #005ecb; }
+    /* Reset y Estilos Base Modernizados */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent; /* Evita el resaltado azul en taps */
+  -webkit-user-select: none; /* Deshabilita selección */
+  user-select: none;
+  -webkit-touch-callout: none; /* Deshabilita menú contextual en iOS */
+}
 
-    /* --- Estilos del Visor de Imágenes --- */
-    #imageViewer { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background-color: #000; z-index: 2000; touch-action: none; }
-    #splitViewContainer { display: flex; width: 100%; height: 100%; }
-    .image-half-container { width: 50%; height: 100%; overflow: hidden; position: relative; }
-    #leftImage, #rightImage { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: center center; will-change: transform; background-color: #111; }
+html {
+  height: -webkit-fill-available; /* Para iOS Safari */
+  background-color: #000;
+}
 
-    /* Estilo para botón dentro del visor */
-    .viewer-button { position: absolute; z-index: 15; background-color: rgba(50, 50, 50, 0.7); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; padding: 8px 10px; border-radius: 5px; font-size: 0.9em; cursor: pointer; }
-    .viewer-button:hover { background-color: rgba(80, 80, 80, 0.8); }
-    #fullscreenBtn { bottom: 15px; left: 15px; }
+body {
+  height: 100dvh; /* Altura dinámica del viewport */
+  min-height: -webkit-fill-available;
+  overflow: hidden; /* Previene scroll */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; /* Fuente estándar de iOS/macOS y fallback */
+  display: flex;
+  flex-direction: column;
+  background-color: #000; /* Fondo negro principal */
+  color: #fff; /* Texto blanco por defecto */
+  -webkit-font-smoothing: antialiased; /* Mejora renderizado de fuentes */
+  -moz-osx-font-smoothing: grayscale;
+}
 
-    /* --- Clase para Simular Fullscreen --- */
-    .fullscreen-simulated {
-        /* Usar !important con precaución, pero útil aquí para asegurar override */
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100vw !important;
-        height: 100dvh !important; /* Usa dvh para altura dinámica real */
-        z-index: 5000 !important; /* Muy alto */
-        background-color: #000 !important; /* Asegurar fondo */
-    }
+/* --- Estilos Cámara --- */
+#mainInterface {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  position: relative; /* Para posicionar controles si es necesario */
+}
+
+.viewport-container {
+  position: relative;
+  flex-grow: 1; /* Ocupa el espacio disponible */
+  overflow: hidden;
+  display: flex;
+  background-color: #000; /* Fondo negro si el video no carga */
+}
+
+#video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Cubre el contenedor manteniendo aspecto */
+  display: block;
+  z-index: 1;
+}
+
+/* Overlay de Flash (sin cambios significativos, ya es funcional) */
+#flashOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+  display: none; /* Oculto hasta que se activa */
+}
+@keyframes flashAnimation {
+  0% { opacity: 0; }
+  50% { opacity: 0.8; } /* Un poco más visible */
+  100% { opacity: 0; }
+}
+#flashOverlay.flash {
+  display: block;
+  animation: flashAnimation 0.25s ease-in-out; /* Animación más rápida */
+}
+
+/* Contenedor de Controles (Estilo iOS Translúcido) */
+#controls-container {
+  background-color: rgba(0, 0, 0, 0.6); /* Fondo negro semitransparente */
+  backdrop-filter: blur(10px); /* Efecto blur tipo iOS */
+  -webkit-backdrop-filter: blur(10px); /* Para Safari */
+  padding: 20px; /* Más espaciado interno */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0; /* No se encoge */
+  z-index: 10;
+  position: relative; /* O absolute si prefieres superponerlo */
+  /* Si usas position: absolute; bottom: 0; left: 0; */
+  /* necesitarás ajustar el padding-bottom de #mainInterface o el height de .viewport-container */
+}
+
+#initial-buttons {
+  display: flex;
+  gap: 15px; /* Espacio entre botones iniciales */
+  margin-bottom: 20px; /* Más espacio antes del progreso/shutter */
+}
+
+#progress {
+  margin-bottom: 15px;
+  font-size: 0.95em; /* Ligeramente más grande */
+  color: #d1d1d6; /* Gris claro estándar de iOS (modo oscuro) */
+  text-align: center;
+  min-height: 2.5em;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+/* Estilo Base de Botones */
+button {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 1em;
+  padding: 12px 20px; /* Padding base */
+  border-radius: 10px; /* Bordes redondeados */
+  background-color: rgba(60, 60, 67, 0.8); /* Gris oscuro translúcido iOS */
+  transition: background-color 0.2s ease, transform 0.1s ease; /* Transiciones suaves */
+  font-weight: 500; /* Peso medio */
+}
+
+button:active {
+  background-color: rgba(80, 80, 97, 0.9); /* Oscurece un poco al presionar */
+  transform: scale(0.97); /* Efecto de presión sutil */
+}
+
+/* Botones de Acción Principal (Azul iOS) */
+#startBtn, #visualizeBtn, #saveBtn {
+  background-color: #0A84FF; /* Azul vibrante de iOS */
+  color: white;
+  font-weight: 600; /* Un poco más bold */
+  padding: 12px 25px;
+}
+#startBtn:active, #visualizeBtn:active, #saveBtn:active {
+  background-color: #0060df; /* Azul más oscuro al presionar */
+}
+
+/* Botón de Captura (Shutter) */
+#takeFirstPhoto, #takeSecondPhoto {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%; /* Círculo perfecto */
+  background-color: #fff; /* Blanco sólido */
+  border: 5px solid #fff; /* Borde blanco grueso */
+  padding: 0; /* Sin padding interno */
+  margin: 10px 0;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); /* Sombra suave */
+  /* No necesita color de texto */
+}
+#takeFirstPhoto:active, #takeSecondPhoto:active {
+  background-color: #e5e5e5; /* Gris claro al presionar */
+  border-color: #e5e5e5;
+  transform: scale(0.95); /* Encoge ligeramente */
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); /* Sombra reducida */
+}
+
+/* Elementos ocultos */
+#canvas, #photoPreview, #fileInput { display: none; }
+
+/* --- Estilos Modal Resultado (Estilo Alerta/Modal iOS) --- */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: auto; /* Permite scroll si el contenido es muy grande */
+  background-color: rgba(0, 0, 0, 0.65); /* Fondo oscuro más pronunciado */
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+  /* Animación opcional para aparecer */
+  /* opacity: 0; */
+  /* transition: opacity 0.3s ease; */
+}
+/* .modal.show { display: flex; opacity: 1; } */
+
+.modal-content {
+  background-color: #2c2c2e; /* Gris muy oscuro iOS (Dark Mode) */
+  color: #fff;
+  margin: auto;
+  padding: 25px; /* Padding generoso */
+  width: auto;
+  max-width: 90%;
+  max-height: 90dvh; /* Limita altura */
+  position: relative;
+  border-radius: 14px; /* Bordes más redondeados tipo iOS */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); /* Sombra más pronunciada */
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.modal-content img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(90dvh - 160px); /* Ajusta según padding y botones */
+  height: auto;
+  margin-bottom: 25px; /* Más espacio bajo la imagen */
+  border-radius: 8px; /* Redondeo suave para la imagen */
+}
+
+/* Botón Cerrar (Estilo iOS) */
+.close-btn {
+  color: #8A8A8E; /* Gris neutro iOS */
+  position: absolute;
+  top: 12px; /* Ajuste fino */
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: rgba(118, 118, 128, 0.24); /* Fondo gris translúcido */
+  font-size: 16px; /* Tamaño de la 'x' */
+  font-weight: 600;
+  line-height: 30px; /* Centrado vertical */
+  text-align: center;
+  cursor: pointer;
+  z-index: 20;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.close-btn:hover, .close-btn:focus {
+  background-color: rgba(118, 118, 128, 0.4); /* Más opaco al pasar el ratón */
+  color: #fff; /* Texto blanco */
+}
+/* Botón Guardar ya hereda estilo de #saveBtn */
+
+/* --- Estilos del Visor de Imágenes --- */
+#imageViewer {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
+  background-color: #000; /* Fondo negro sólido */
+  z-index: 2000;
+  touch-action: none; /* Previene acciones default del navegador en touch */
+}
+
+#splitViewContainer {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.image-half-container {
+  width: 50%;
+  height: 100%;
+  overflow: hidden; /* Esconde partes de la imagen que se salen */
+  position: relative;
+}
+
+#leftImage, #rightImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Cubre el contenedor */
+  transform-origin: center center; /* Zoom/pan desde el centro */
+  will-change: transform; /* Optimiza la animación de transformación */
+  background-color: #111; /* Fondo si la imagen tarda */
+}
+
+/* Botones dentro del visor (Cerrar usa .close-btn) */
+#closeViewerBtn { /* Hereda .close-btn, pero posición puede necesitar ajuste si no es la misma */
+    top: 20px;
+    right: 20px;
+}
+
+.viewer-button { /* Estilo para otros botones del visor, como #fullscreenBtn */
+  position: absolute;
+  z-index: 15;
+  background-color: rgba(60, 60, 67, 0.8); /* Mismo gris que botones normales */
+  border: none;
+  color: #fff;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.viewer-button:hover {
+  background-color: rgba(80, 80, 97, 0.9);
+}
+#fullscreenBtn {
+  bottom: 25px; /* Posicionamiento */
+  left: 20px;
+}
+
+/* --- Clase para Simular Fullscreen (sin cambios, es funcional) --- */
+.fullscreen-simulated {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  z-index: 5000 !important;
+  background-color: #000 !important;
+}
   </style>
 </head>
 <body>
