@@ -3,9 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Cámara y Visor 3D</title>
-
-  <link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="15,30 50,10 85,30 50,50" fill="%23ccc"/><polygon points="15,30 15,70 50,90 50,50" fill="%23aaa"/><polygon points="50,50 50,90 85,70 85,30" fill="%23888"/><circle cx="50" cy="60" r="18" fill="%23555"/><circle cx="50" cy="60" r="10" fill="%23333"/><rect x="65" y="22" width="10" height="5" fill="%23666" transform="skewY(-10)"/></svg>'>
+  <title>Cámara 3D Moderna</title> <link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="15,30 50,10 85,30 50,50" fill="%23ccc"/><polygon points="15,30 15,70 50,90 50,50" fill="%23aaa"/><polygon points="50,50 50,90 85,70 85,30" fill="%23888"/><circle cx="50" cy="60" r="18" fill="%23555"/><circle cx="50" cy="60" r="10" fill="%23333"/><rect x="65" y="22" width="10" height="5" fill="%23666" transform="skewY(-10)"/></svg>'>
 
   <style>
     /* Reset y Estilos Base Modernizados */
@@ -13,429 +11,241 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      -webkit-tap-highlight-color: transparent; /* Evita el resaltado azul en taps */
-      -webkit-user-select: none; /* Deshabilita selección */
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
       user-select: none;
-      -webkit-touch-callout: none; /* Deshabilita menú contextual en iOS */
+      -webkit-touch-callout: none;
     }
 
     html {
-      height: -webkit-fill-available; /* Para iOS Safari */
-      /* El fondo se define en body o en initialMenu */
+      height: -webkit-fill-available;
     }
 
     body {
-      height: 100dvh; /* Altura dinámica del viewport */
+      height: 100dvh;
       min-height: -webkit-fill-available;
-      overflow: hidden; /* Previene scroll */
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; /* Fuente estándar de iOS/macOS y fallback */
-      display: flex; /* Necesario para que flex funcione en hijos directos como mainInterface */
-      flex-direction: column;
-      background-color: #000; /* Fondo negro si initialMenu está oculto */
-      color: #fff; /* Texto blanco por defecto */
-      -webkit-font-smoothing: antialiased; /* Mejora renderizado de fuentes */
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex; /* Puede ayudar a contener los elementos fijos */
+      background-color: #000; /* Fondo base si nada está visible */
+      color: #fff;
+      -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      position: relative; /* Para posicionamiento absoluto/fijo de hijos */
+      position: relative;
     }
 
-    /* --- NUEVO: Estilos Menú Inicial --- */
-    #initialMenu {
-      display: flex;
+    /* --- Estilos Comunes para Pantallas (Inicio, Carga, Resultado) --- */
+    .screen {
+      display: none; /* Ocultas por defecto, controladas por JS */
       flex-direction: column;
-      justify-content: center; /* Centra verticalmente */
-      align-items: center; /* Centra horizontalmente */
-      height: 100dvh; /* Ocupa toda la altura */
+      justify-content: center;
+      align-items: center;
+      height: 100dvh;
       min-height: -webkit-fill-available;
       width: 100%;
-      position: fixed; /* Se superpone a todo */
+      position: fixed;
       top: 0;
       left: 0;
-      z-index: 500; /* Encima de la interfaz principal */
-      padding: 20px;
-      /* Fondo con personalidad: Gradiente sutil */
-      background: linear-gradient(145deg, #051421, #002a4d); /* Azul oscuro a más oscuro */
+      padding: 25px; /* Padding uniforme */
+      z-index: 500; /* Base z-index */
       opacity: 1;
       visibility: visible;
-      transition: opacity 0.4s ease-out, visibility 0.4s ease-out; /* Transición suave al ocultar */
+      transition: opacity 0.4s ease-out, visibility 0.4s ease-out;
     }
 
-    #initialMenu.hidden {
+    .screen.hidden {
       opacity: 0;
       visibility: hidden;
-      pointer-events: none; /* Desactiva interacción cuando está oculto */
+      pointer-events: none;
+      transition: opacity 0.3s ease-in, visibility 0.3s ease-in; /* Transición de salida más rápida */
     }
 
-    .initial-button {
-      display: inline-flex; /* Para alinear icono y texto */
+    /* --- Estilos Menú Inicial --- */
+    #initialMenu {
+      background: linear-gradient(145deg, #051421, #002a4d);
+      /* Hereda .screen, inicialmente visible (controlado por JS) */
+      display: flex; /* Mostrar inicialmente */
+    }
+
+    .initial-button { /* Estilo común para botones grandes */
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 12px; /* Espacio entre icono y texto */
+      gap: 12px;
       border: none;
-      border-radius: 50px; /* Forma de píldora */
+      border-radius: 50px;
       font-size: 1.1em;
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
-      margin: 12px 0; /* Espacio entre botones */
-      transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
-                  box-shadow 0.3s ease;
-      will-change: transform, box-shadow; /* Optimiza animación */
+      margin: 12px 0;
+      transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.3s ease;
+      will-change: transform, box-shadow;
     }
-
-    .initial-button svg {
-      width: 22px; /* Tamaño de icono consistente */
-      height: 22px;
-    }
-
-    /* Botón Iniciar Cámara (Más grande, Azul llamativo) */
+    .initial-button svg { width: 22px; height: 22px; }
     #initialStartBtn {
-      background-color: #0A84FF; /* Azul iOS vibrante */
-      color: white;
-      padding: 18px 40px; /* Más grande */
-      box-shadow: 0 5px 20px rgba(10, 132, 255, 0.3); /* Sombra/Glow azul */
+      background-color: #0A84FF; color: white; padding: 18px 40px;
+      box-shadow: 0 5px 20px rgba(10, 132, 255, 0.3);
     }
-
-    #initialStartBtn svg {
-      stroke: white; /* Color del icono */
-    }
-
-    /* Botón Visualizar Fotos (Contraste, Blanco/Gris) */
+    #initialStartBtn svg { stroke: white; }
     #initialVisualizeBtn {
-      background-color: rgba(255, 255, 255, 0.95); /* Blanco casi opaco */
-      color: #0056b3; /* Azul más oscuro para el texto */
-      padding: 15px 35px; /* Ligeramente más pequeño */
-      box-shadow: 0 4px 15px rgba(150, 150, 150, 0.2); /* Sombra suave */
+      background-color: rgba(255, 255, 255, 0.95); color: #0056b3; padding: 15px 35px;
+      box-shadow: 0 4px 15px rgba(150, 150, 150, 0.2);
     }
-
-    #initialVisualizeBtn svg {
-      stroke: #0056b3; /* Mismo color que el texto */
-    }
-
-    /* Efectos Hover y Active */
-    .initial-button:hover {
-      transform: translateY(-3px); /* Sube ligeramente */
-      box-shadow: 0 8px 25px rgba(10, 132, 255, 0.35); /* Sombra más pronunciada */
-    }
-    #initialVisualizeBtn:hover {
-       box-shadow: 0 6px 20px rgba(100, 100, 100, 0.25); /* Sombra diferente para el botón claro */
-       background-color: white;
-    }
-
-    .initial-button:active {
-      transform: scale(0.97); /* Encoge al presionar */
-      box-shadow: none; /* Quita sombra al presionar */
-    }
-    /* --- FIN Estilos Menú Inicial --- */
-
+    #initialVisualizeBtn svg { stroke: #0056b3; }
+    .initial-button:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(10, 132, 255, 0.35); }
+    #initialVisualizeBtn:hover { box-shadow: 0 6px 20px rgba(100, 100, 100, 0.25); background-color: white; }
+    .initial-button:active { transform: scale(0.97); box-shadow: none; }
 
     /* --- Estilos Cámara --- */
     #mainInterface {
-      /* display: flex; */ /* Controlado por JS, inicia en none */
-      display: none;
-      flex-direction: column;
-      height: 100%; /* Ocupa el espacio del body */
-      width: 100%;
-      position: relative; /* Para posicionar controles si es necesario */
-      background-color: #000; /* Fondo por si acaso */
-    }
-
-    .viewport-container {
-      position: relative;
-      flex-grow: 1; /* Ocupa el espacio disponible */
-      overflow: hidden;
-      display: flex;
-      background-color: #000; /* Fondo negro si el video no carga */
-    }
-
-    #video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover; /* Cubre el contenedor manteniendo aspecto */
-      display: block;
-      z-index: 1;
-    }
-
-    /* Overlay de Flash */
-    #flashOverlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: white;
-      opacity: 0;
-      pointer-events: none;
-      z-index: 5;
-      display: none; /* Oculto hasta que se activa */
-    }
-    @keyframes flashAnimation {
-      0% { opacity: 0; }
-      50% { opacity: 0.8; } /* Un poco más visible */
-      100% { opacity: 0; }
-    }
-    #flashOverlay.flash {
-      display: block;
-      animation: flashAnimation 0.25s ease-in-out; /* Animación más rápida */
-    }
-
-    /* Contenedor de Controles (Estilo iOS Translúcido) */
-    #controls-container {
-      background-color: rgba(0, 0, 0, 0.6); /* Fondo negro semitransparente */
-      backdrop-filter: blur(10px); /* Efecto blur tipo iOS */
-      -webkit-backdrop-filter: blur(10px); /* Para Safari */
-      padding: 15px 20px; /* Espaciado interno ajustado */
-      display: none; /* Oculto inicialmente, se muestra con la cámara */
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-      flex-shrink: 0; /* No se encoge */
-      z-index: 10;
-      position: relative;
-    }
-
-    #progress {
-      margin-bottom: 15px;
-      font-size: 0.95em; /* Ligeramente más grande */
-      color: #d1d1d6; /* Gris claro estándar de iOS (modo oscuro) */
-      text-align: center;
-      min-height: 2.5em;
-      line-height: 1.4;
-      font-weight: 400;
-    }
-
-    /* Estilo Base de Botones (solo para botones dentro de controls-container si los hubiera) */
-    #controls-container button {
-        /* Estilos base si añades más botones aquí */
-    }
-
-    /* Botón de Captura (Shutter) */
-    #takeFirstPhoto, #takeSecondPhoto {
-      width: 70px;
-      height: 70px;
-      border-radius: 50%; /* Círculo perfecto */
-      background-color: #fff; /* Blanco sólido */
-      border: 5px solid #fff; /* Borde blanco grueso */
-      padding: 0; /* Sin padding interno */
-      margin: 10px 0;
-      position: relative;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); /* Sombra suave */
-      cursor: pointer;
-      transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease;
+      /* No hereda .screen, tiene su propio flujo */
       display: none; /* Controlado por JS */
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      position: fixed; /* Ocupa toda la pantalla cuando es visible */
+      top: 0; left: 0;
+      z-index: 400; /* Debajo de las pantallas de overlay */
+      background-color: #000;
     }
-    #takeFirstPhoto:active, #takeSecondPhoto:active {
-      background-color: #e5e5e5; /* Gris claro al presionar */
-      border-color: #e5e5e5;
-      transform: scale(0.95); /* Encoge ligeramente */
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); /* Sombra reducida */
-    }
-
-    /* Elementos ocultos */
+    .viewport-container { position: relative; flex-grow: 1; overflow: hidden; display: flex; background-color: #000; }
+    #video { width: 100%; height: 100%; object-fit: cover; display: block; z-index: 1; }
+    #flashOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: white; opacity: 0; pointer-events: none; z-index: 5; display: none; }
+    @keyframes flashAnimation { 0% { opacity: 0; } 50% { opacity: 0.8; } 100% { opacity: 0; } }
+    #flashOverlay.flash { display: block; animation: flashAnimation 0.25s ease-in-out; }
+    #controls-container { background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 15px 20px; display: none; flex-direction: column; align-items: center; width: 100%; flex-shrink: 0; z-index: 10; position: relative; }
+    #progress { margin-bottom: 15px; font-size: 0.95em; color: #d1d1d6; text-align: center; min-height: 2.5em; line-height: 1.4; font-weight: 400; }
+    #takeFirstPhoto, #takeSecondPhoto { width: 70px; height: 70px; border-radius: 50%; background-color: #fff; border: 5px solid #fff; padding: 0; margin: 10px 0; position: relative; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); cursor: pointer; transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease; display: none; }
+    #takeFirstPhoto:active, #takeSecondPhoto:active { background-color: #e5e5e5; border-color: #e5e5e5; transform: scale(0.95); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); }
     #canvas, #photoPreview, #fileInput { display: none; }
 
-    /* --- Estilos Modal Resultado (Estilo Alerta/Modal iOS) --- */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100dvh;
-      overflow: auto; /* Permite scroll si el contenido es muy grande */
-      background-color: rgba(0, 0, 0, 0.65); /* Fondo oscuro más pronunciado */
-      justify-content: center;
-      align-items: center;
-      padding: 15px;
-      /* Animación opcional para aparecer */
-      /* opacity: 0; */
-      /* transition: opacity 0.3s ease; */
+    /* --- NUEVO: Estilos Pantalla de Carga --- */
+    #loadingScreen {
+      background-color: rgba(0, 0, 0, 0.85); /* Fondo oscuro semitransparente */
+      z-index: 600; /* Encima de todo excepto quizás visor */
+      color: #eee;
+      /* Hereda .screen (display: none inicial) */
     }
-    /* .modal.show { display: flex; opacity: 1; } */
-
-    .modal-content {
-      background-color: #2c2c2e; /* Gris muy oscuro iOS (Dark Mode) */
-      color: #fff;
-      margin: auto;
-      padding: 25px; /* Padding generoso */
-      width: auto;
-      max-width: 90%;
-      max-height: 90dvh; /* Limita altura */
-      position: relative;
-      border-radius: 14px; /* Bordes más redondeados tipo iOS */
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); /* Sombra más pronunciada */
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .modal-content img {
-      display: block;
-      max-width: 100%;
-      max-height: calc(90dvh - 160px); /* Ajusta según padding y botones */
-      height: auto;
-      margin-bottom: 25px; /* Más espacio bajo la imagen */
-      border-radius: 8px; /* Redondeo suave para la imagen */
-    }
-
-    /* Botón Cerrar (Estilo iOS) */
-    .close-btn {
-      color: #8A8A8E; /* Gris neutro iOS */
-      position: absolute;
-      top: 12px; /* Ajuste fino */
-      right: 12px;
-      width: 30px;
-      height: 30px;
+    .loader {
+      border: 6px solid #f3f3f3; /* Gris claro */
+      border-top: 6px solid #0A84FF; /* Azul */
       border-radius: 50%;
-      background-color: rgba(118, 118, 128, 0.24); /* Fondo gris translúcido */
-      font-size: 16px; /* Tamaño de la 'x' */
-      font-weight: 600;
-      line-height: 30px; /* Centrado vertical */
-      text-align: center;
-      cursor: pointer;
-      z-index: 20;
-      transition: background-color 0.2s ease, color 0.2s ease;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 25px;
     }
-    .close-btn:hover, .close-btn:focus {
-      background-color: rgba(118, 118, 128, 0.4); /* Más opaco al pasar el ratón */
-      color: #fff; /* Texto blanco */
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
-    /* Botón Guardar (Estilo iOS Azul) */
-    #saveBtn {
-      background-color: #0A84FF; /* Azul vibrante de iOS */
-      color: white;
-      font-weight: 600; /* Un poco más bold */
-      padding: 12px 25px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 1em;
-      margin-top: 10px;
-      transition: background-color 0.2s ease, transform 0.1s ease;
-    }
-    #saveBtn:active {
-      background-color: #0060df; /* Azul más oscuro al presionar */
-      transform: scale(0.97);
+    #loadingText {
+      font-size: 1.1em;
+      font-weight: 500;
     }
 
-    /* --- Estilos del Visor de Imágenes --- */
-    #imageViewer {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100dvh;
-      background-color: #000; /* Fondo negro sólido */
-      z-index: 2000;
-      touch-action: none; /* Previene acciones default del navegador en touch */
+    /* --- NUEVO: Estilos Pantalla de Resultado --- */
+    #resultScreen {
+      background: linear-gradient(145deg, #051421, #002a4d); /* Mismo fondo que inicio */
+      z-index: 550; /* Encima de inicio, debajo de carga */
+      /* Hereda .screen (display: none inicial) */
     }
-
-    #splitViewContainer {
+    #finalResultImage {
+      display: block;
+      max-width: 85%; /* Limitar ancho en pantallas grandes */
+      max-height: 60vh; /* Limitar altura */
+      height: auto;
+      margin-bottom: 30px; /* Espacio antes de botones */
+      border-radius: 12px; /* Bordes redondeados */
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+    #resultActions {
       display: flex;
-      width: 100%;
-      height: 100%;
+      gap: 15px; /* Espacio entre botones de acción */
     }
+    /* Reutilizar .initial-button o crear estilos específicos si es necesario */
+    #saveResultBtn {
+      /* Usa .initial-button como base */
+      background-color: #0A84FF; color: white; padding: 12px 25px; /* Tamaño estándar */
+      box-shadow: 0 4px 15px rgba(10, 132, 255, 0.25);
+    }
+    #saveResultBtn svg { stroke: white; }
+    #resetFromResulBtn {
+       /* Usa .initial-button como base */
+      background-color: rgba(118, 118, 128, 0.3); color: #fff; padding: 12px 25px; /* Gris translúcido */
+      box-shadow: none;
+    }
+     #resetFromResulBtn svg { stroke: #fff; }
+     #resetFromResulBtn:hover { background-color: rgba(118, 118, 128, 0.5); }
 
-    .image-half-container {
-      width: 50%;
-      height: 100%;
-      overflow: hidden; /* Esconde partes de la imagen que se salen */
-      position: relative;
-    }
 
-    #leftImage, #rightImage {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover; /* Cubre el contenedor */
-      transform-origin: center center; /* Zoom/pan desde el centro */
-      will-change: transform; /* Optimiza la animación de transformación */
-      background-color: #111; /* Fondo si la imagen tarda */
-    }
+    /* --- Estilos del Visor de Imágenes (Sin cambios significativos) --- */
+    #imageViewer { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background-color: #000; z-index: 2000; touch-action: none; }
+    #splitViewContainer { display: flex; width: 100%; height: 100%; }
+    .image-half-container { width: 50%; height: 100%; overflow: hidden; position: relative; }
+    #leftImage, #rightImage { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: center center; will-change: transform; background-color: #111; }
+    .close-btn { color: #8A8A8E; position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border-radius: 50%; background-color: rgba(118, 118, 128, 0.24); font-size: 16px; font-weight: 600; line-height: 30px; text-align: center; cursor: pointer; z-index: 20; transition: background-color 0.2s ease, color 0.2s ease; }
+    .close-btn:hover, .close-btn:focus { background-color: rgba(118, 118, 128, 0.4); color: #fff; }
+    #closeViewerBtn { top: 20px; right: 20px; } /* Posición específica para visor */
+    .viewer-button { position: absolute; z-index: 15; background-color: rgba(60, 60, 67, 0.8); border: none; color: #fff; padding: 10px 15px; border-radius: 8px; font-size: 0.9em; cursor: pointer; transition: background-color 0.2s ease; }
+    .viewer-button:hover { background-color: rgba(80, 80, 97, 0.9); }
+    #fullscreenBtn { bottom: 25px; left: 20px; }
+    .fullscreen-simulated { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; z-index: 5000 !important; background-color: #000 !important; }
 
-    /* Botones dentro del visor (Cerrar usa .close-btn) */
-    #closeViewerBtn { /* Hereda .close-btn */
-        top: 20px;
-        right: 20px;
-    }
-
-    .viewer-button { /* Estilo para otros botones del visor, como #fullscreenBtn */
-      position: absolute;
-      z-index: 15;
-      background-color: rgba(60, 60, 67, 0.8); /* Mismo gris que botones normales */
-      border: none;
-      color: #fff;
-      padding: 10px 15px;
-      border-radius: 8px;
-      font-size: 0.9em;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-    .viewer-button:hover {
-      background-color: rgba(80, 80, 97, 0.9);
-    }
-    #fullscreenBtn {
-      bottom: 25px; /* Posicionamiento */
-      left: 20px;
-    }
-
-    /* --- Clase para Simular Fullscreen --- */
-    .fullscreen-simulated {
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 100vw !important;
-      height: 100dvh !important;
-      z-index: 5000 !important;
-      background-color: #000 !important;
-    }
   </style>
 </head>
 <body>
 
-  <div id="initialMenu">
+  <div id="initialMenu" class="screen">
     <button id="initialStartBtn" class="initial-button">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-camera"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
       <span>Iniciar Cámara</span>
     </button>
     <button id="initialVisualizeBtn" class="initial-button">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-image"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
       <span>Visualizar Fotos</span>
     </button>
   </div>
+
   <div id="mainInterface">
     <div class="viewport-container">
       <video id="video" autoplay muted playsinline></video>
       <div id="flashOverlay"></div>
     </div>
-    <canvas id="canvas"></canvas> <div id="controls-container">
-      <div id="progress"></div> <button id="takeFirstPhoto"></button>
+    <canvas id="canvas"></canvas>
+    <div id="controls-container">
+      <div id="progress"></div>
+      <button id="takeFirstPhoto"></button>
       <button id="takeSecondPhoto"></button>
+    </div>
+  </div>
+
+  <div id="loadingScreen" class="screen hidden">
+    <div class="loader"></div>
+    <div id="loadingText">Ya está casi lista...</div>
+  </div>
+
+  <div id="resultScreen" class="screen hidden">
+    <img id="finalResultImage" src="" alt="Foto 3D Generada">
+    <div id="resultActions">
+       <button id="saveResultBtn" class="initial-button">
+         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+         <span>Guardar</span>
+       </button>
+       <button id="resetFromResulBtn" class="initial-button">
+         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+         <span>Inicio</span>
+       </button>
     </div>
   </div>
 
   <input type="file" id="fileInput" accept="image/*">
 
-  <div id="resultModal" class="modal">
-    <div class="modal-content">
-      <span id="closeResultModalBtn" class="close-btn">&times;</span>
-      <img id="resultImage" src="" alt="Foto 3D Generada">
-      <button id="saveBtn">Guardar Foto</button>
-    </div>
-  </div>
-
   <div id="imageViewer">
     <div id="splitViewContainer">
-      <div id="leftContainer" class="image-half-container">
-        <img id="leftImage" src="" alt="Mitad Izquierda">
-      </div>
-      <div id="rightContainer" class="image-half-container">
-        <img id="rightImage" src="" alt="Mitad Derecha">
-      </div>
+      <div id="leftContainer" class="image-half-container"><img id="leftImage" src="" alt="Mitad Izquierda"></div>
+      <div id="rightContainer" class="image-half-container"><img id="rightImage" src="" alt="Mitad Derecha"></div>
     </div>
     <span id="closeViewerBtn" class="close-btn">&times;</span>
     <button id="fullscreenBtn" class="viewer-button">Ampliar</button>
@@ -447,7 +257,6 @@
   const initialMenu = document.getElementById('initialMenu');
   const initialStartBtn = document.getElementById('initialStartBtn');
   const initialVisualizeBtn = document.getElementById('initialVisualizeBtn');
-
   const mainInterface = document.getElementById('mainInterface');
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
@@ -457,20 +266,22 @@
   const controlsContainer = document.getElementById('controls-container');
   const flashOverlay = document.getElementById('flashOverlay');
   const fileInput = document.getElementById('fileInput');
-  const resultModal = document.getElementById('resultModal');
-  const resultImage = document.getElementById('resultImage');
-  const closeResultModalBtn = document.getElementById('closeResultModalBtn');
-  const saveBtn = document.getElementById('saveBtn');
   const imageViewer = document.getElementById('imageViewer');
   const splitViewContainer = document.getElementById('splitViewContainer');
   const leftImage = document.getElementById('leftImage');
   const rightImage = document.getElementById('rightImage');
   const closeViewerBtn = document.getElementById('closeViewerBtn');
   const fullscreenBtn = document.getElementById('fullscreenBtn');
+  const loadingScreen = document.getElementById('loadingScreen'); // NUEVO
+  const resultScreen = document.getElementById('resultScreen'); // NUEVO
+  const finalResultImage = document.getElementById('finalResultImage'); // NUEVO
+  const saveResultBtn = document.getElementById('saveResultBtn'); // NUEVO
+  const resetFromResulBtn = document.getElementById('resetFromResulBtn'); // NUEVO
 
   // --- Estado ---
   let firstImageData = null;
   let stream = null;
+  let objectURLsToRevoke = [];
 
   // --- Estado de Zoom/Pan Visor---
   let currentScale = 1; let currentTranslateX = 0; let currentTranslateY = 0;
@@ -478,8 +289,7 @@
   let startX, startY, initialPinchDistance;
   let initialTranslateX = 0, initialTranslateY = 0;
 
-  // --- Gestión de Object URLs ---
-  let objectURLsToRevoke = [];
+  // --- Funciones Auxiliares ---
   function revokePreviousObjectURLs() {
     if (objectURLsToRevoke.length > 0) {
       console.log("Revocando", objectURLsToRevoke.length, "Object URLs anteriores.");
@@ -487,375 +297,250 @@
       objectURLsToRevoke = [];
     }
   }
-
-  // --- Funciones Cámara ---
   function triggerFlash() { flashOverlay.style.display = 'block'; flashOverlay.classList.add('flash'); }
   flashOverlay.addEventListener('animationend', () => { flashOverlay.classList.remove('flash'); flashOverlay.style.display = 'none'; });
 
-  function startCamera() {
-    const constraints = { video: { facingMode: "environment" } }; // Prioriza cámara trasera
+  // Función para cambiar pantalla visible
+  function showScreen(screenToShow) {
+      const screens = [initialMenu, mainInterface, loadingScreen, resultScreen, imageViewer];
+      screens.forEach(screen => {
+          if (screen) { // Verifica que el elemento exista
+             if (screen.id === screenToShow) {
+                 screen.style.display = screen.id === 'mainInterface' ? 'flex' : 'flex'; // O 'block' según necesites
+                 screen.classList.remove('hidden');
+             } else {
+                 screen.style.display = 'none';
+                 screen.classList.add('hidden'); // Añade hidden por si usas transiciones de opacidad
+             }
+          } else {
+              console.warn("Elemento de pantalla no encontrado:", screenToShow);
+          }
+      });
+      console.log("Mostrando pantalla:", screenToShow);
+  }
 
+
+  // --- Funciones Cámara ---
+  function startCamera() { /* ... (sin cambios respecto a la versión anterior con fallback) ... */
+    const constraints = { video: { facingMode: "environment" } };
     navigator.mediaDevices.getUserMedia(constraints)
       .then(mediaStream => {
         stream = mediaStream;
         video.srcObject = stream;
-        video.play(); // Asegura que el video se reproduzca
-
-        // Esperar a que el video tenga dimensiones para evitar capturas negras
+        video.play();
         video.onloadedmetadata = () => {
-          takeFirstPhotoBtn.style.display = 'block'; // Mostrar botón shutter ahora
+          takeFirstPhotoBtn.style.display = 'block';
           takeSecondPhotoBtn.style.display = 'none';
-          controlsContainer.style.display = 'flex'; // Mostrar barra de controles inferior
+          controlsContainer.style.display = 'flex';
           progress.innerText = "Toma la primera foto";
         };
       })
-      .catch(err => {
+      .catch(err => { /* ... (código de fallback) ... */
         console.error('Error cámara:', err);
-        // Intentar con cualquier cámara si la trasera falla
         if (err.name === "OverconstrainedError" || err.name === "NotFoundError") {
-            console.log("Cámara trasera no encontrada o no compatible, intentando con cualquier cámara...");
-            navigator.mediaDevices.getUserMedia({ video: true }) // Intenta cualquier cámara
+            console.log("Cámara trasera no encontrada, intentando con cualquiera...");
+            navigator.mediaDevices.getUserMedia({ video: true })
               .then(mediaStream => {
-                  stream = mediaStream;
-                  video.srcObject = stream;
-                  video.play();
+                  stream = mediaStream; video.srcObject = stream; video.play();
                   video.onloadedmetadata = () => {
-                     takeFirstPhotoBtn.style.display = 'block';
-                     takeSecondPhotoBtn.style.display = 'none';
-                     controlsContainer.style.display = 'flex';
-                     progress.innerText = "Toma la primera foto";
+                     takeFirstPhotoBtn.style.display = 'block'; takeSecondPhotoBtn.style.display = 'none';
+                     controlsContainer.style.display = 'flex'; progress.innerText = "Toma la primera foto";
                    };
                })
-              .catch(err2 => {
-                  console.error('Error cámara (fallback):', err2);
-                  alert('No se pudo acceder a ninguna cámara: ' + err2.message);
-                  resetUI(); // Volver al menú inicial si hay error
-              });
-        } else {
-            alert('No se pudo acceder a la cámara: ' + err.message);
-            resetUI(); // Volver al menú inicial si hay error
-        }
+              .catch(err2 => { console.error('Error cámara (fallback):', err2); alert('No se pudo acceder a ninguna cámara: ' + err2.message); resetUI(); });
+        } else { alert('No se pudo acceder a la cámara: ' + err.message); resetUI(); }
       });
-  }
+   }
 
-  function stopCamera() {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-        video.srcObject = null;
-        console.log("Cámara detenida.");
-      }
+  function stopCamera() { /* ... (sin cambios) ... */
+      if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; video.srcObject = null; console.log("Cámara detenida."); }
   }
+  function takePhoto() { /* ... (sin cambios, incluyendo chequeo de videoWidth/Height y try-catch) ... */
+      if (!video.videoWidth || !video.videoHeight) { console.error("Video no listo"); progress.innerText = "Error: Video no listo"; return null; }
+      const ctx = canvas.getContext('2d'); canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); return canvas.toDataURL('image/jpeg'); }
+      catch (e) { console.error("Error al dibujar imagen:", e); progress.innerText = "Error al capturar"; return null; }
+  }
+  function requestPermissionAndStart() { console.log("Iniciando proceso cámara..."); showScreen('mainInterface'); startCamera(); }
 
-  function takePhoto() {
-      if (!video.videoWidth || !video.videoHeight) {
-          console.error("Video no listo para capturar");
-          progress.innerText = "Error: Video no listo";
-          return null;
-      }
-      const ctx = canvas.getContext('2d');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      try {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        return canvas.toDataURL('image/jpeg');
-      } catch (e) {
-        console.error("Error al dibujar imagen en canvas:", e);
-        progress.innerText = "Error al capturar";
-        return null;
-      }
-  }
-
-  // Función llamada al pulsar "Iniciar Cámara"
-  function requestPermissionAndStart() {
-      console.log("Iniciando proceso de cámara...");
-      initialMenu.classList.add('hidden'); // Ocultar menú inicial con transición
-      mainInterface.style.display = 'flex'; // Mostrar interfaz de cámara
-      startCamera(); // Pedir permiso e iniciar stream
-  }
 
   // --- Reset UI ---
   function resetUI() {
-      console.log("Reseteando UI...");
-      stopCamera();
-      revokePreviousObjectURLs();
+    console.log("Reseteando UI...");
+    stopCamera();
+    revokePreviousObjectURLs();
 
-      // Ocultar interfaces principales y modales
-      mainInterface.style.display = 'none';
-      resultModal.style.display = 'none';
-      imageViewer.style.display = 'none';
-      imageViewer.classList.remove('fullscreen-simulated');
-      fullscreenBtn.textContent = "Ampliar";
+    // Ocultar todas las pantallas excepto el menú inicial
+    showScreen('initialMenu');
 
-      // Ocultar botones de captura y limpiar progreso
-      takeFirstPhotoBtn.style.display = 'none';
-      takeSecondPhotoBtn.style.display = 'none';
-      progress.innerText = '';
-      controlsContainer.style.display = 'none'; // Ocultar barra de controles inferior
+    // Ocultar elementos específicos dentro de interfaces
+    takeFirstPhotoBtn.style.display = 'none';
+    takeSecondPhotoBtn.style.display = 'none';
+    progress.innerText = '';
+    controlsContainer.style.display = 'none'; // Ocultar barra controles cámara
+    imageViewer.classList.remove('fullscreen-simulated');
+    fullscreenBtn.textContent = "Ampliar";
 
-      // Limpiar datos
-      firstImageData = null;
-      flashOverlay.style.display = 'none';
-      flashOverlay.classList.remove('flash');
-      resetViewerState();
-      fileInput.value = null; // Resetea el input de archivo
+    // Limpiar datos
+    firstImageData = null;
+    flashOverlay.style.display = 'none';
+    flashOverlay.classList.remove('flash');
+    resetViewerState();
+    fileInput.value = null;
+    finalResultImage.src = ""; // Limpiar imagen de resultado anterior
 
-      // Mostrar el menú inicial
-      initialMenu.classList.remove('hidden'); // Asegura que el menú inicial sea visible
-      console.log("UI Reseteada, mostrando menú inicial.");
+    console.log("UI Reseteada.");
   }
 
   // --- Funciones Visor ---
-  function resetViewerState() { currentScale = 1; currentTranslateX = 0; currentTranslateY = 0; applyTransform(); }
-  function applyTransform() { const tfm = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`; leftImage.style.transform = tfm; rightImage.style.transform = tfm; }
-  function canvasToBlob(canvas, mimeType = 'image/jpeg', quality = 0.85) { return new Promise((resolve, reject) => { if (!canvas || typeof canvas.toBlob !== 'function') { reject(new Error("Canvas inválido o toBlob() no soportado")); return; } canvas.toBlob(blob => { if (blob) { resolve(blob); } else { reject(new Error("canvas.toBlob() falló")); } }, mimeType, quality); }); }
+  function resetViewerState() { /* ... (sin cambios) ... */ currentScale = 1; currentTranslateX = 0; currentTranslateY = 0; applyTransform(); }
+  function applyTransform() { /* ... (sin cambios) ... */ const tfm = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`; leftImage.style.transform = tfm; rightImage.style.transform = tfm; }
+  function canvasToBlob(canvas, mimeType = 'image/jpeg', quality = 0.85) { /* ... (sin cambios) ... */ return new Promise((resolve, reject) => { if (!canvas || typeof canvas.toBlob !== 'function') { reject(new Error("Canvas inválido o toBlob() no soportado")); return; } canvas.toBlob(blob => { if (blob) { resolve(blob); } else { reject(new Error("canvas.toBlob() falló")); } }, mimeType, quality); }); }
+  async function handleFileSelect(event) { /* ... (sin cambios respecto a la última versión, asegurándose que llama a showScreen('imageViewer') al final) ... */
+      console.log("handleFileSelect llamado");
+      const file = event.target.files[0];
+      if (!file || !file.type.startsWith('image/')) { console.log("Selección cancelada o tipo incorrecto."); return; }
 
-  async function handleFileSelect(event) {
-    console.log("handleFileSelect llamado");
-    const file = event.target.files[0];
-    if (!file || !file.type.startsWith('image/')) {
-      console.log("Ningún archivo seleccionado o tipo incorrecto.");
-      // No hacer nada o volver al menú si no se selecciona archivo válido
-      // Si initialMenu estaba oculto, resetUI podría ser una opción,
-      // pero si el usuario cancela, quizás es mejor no hacer nada.
-      // resetUI(); // Descomentar si quieres volver al menú al cancelar
-      return;
-    }
+      showScreen('loadingScreen'); // Mostrar carga mientras se procesa el archivo
 
-    // Ocultar menú inicial (si estaba visible)
-    initialMenu.classList.add('hidden');
-    // Ocultar interfaz de cámara si estaba visible
-    mainInterface.style.display = 'none';
-    // Mostrar un indicador de carga si es necesario aquí
+      console.log("Archivo seleccionado:", file.name);
+      revokePreviousObjectURLs();
+      let originalFileURL = null;
 
-    console.log("Archivo seleccionado:", file.name);
-    revokePreviousObjectURLs();
-    let originalFileURL = null;
+      try { originalFileURL = URL.createObjectURL(file); objectURLsToRevoke.push(originalFileURL); }
+      catch (error) { console.error("Error creando URL archivo original:", error); alert("Error al procesar archivo."); resetUI(); return; }
 
-    try {
-      originalFileURL = URL.createObjectURL(file);
-      objectURLsToRevoke.push(originalFileURL);
-      console.log("Original URL creado:", originalFileURL);
-    } catch (error) {
-      console.error("Error creando Object URL para el archivo original:", error);
-      alert("Error al procesar el archivo seleccionado.");
-      resetUI();
-      return;
-    }
-
-    const img = new Image();
-    img.onload = async () => {
-      console.log("Imagen fuente cargada:", img.naturalWidth, "x", img.naturalHeight);
-      if (img.naturalWidth < 2) {
-        alert("La imagen es demasiado estrecha para dividirla.");
-        resetUI(); return;
-      }
-      try {
-        // Crear canvas izquierdo
-        const canvasLeft = document.createElement('canvas');
-        const ctxLeft = canvasLeft.getContext('2d');
-        const leftWidth = Math.floor(img.naturalWidth / 2);
-        const height = img.naturalHeight;
-        canvasLeft.width = leftWidth;
-        canvasLeft.height = height;
-        ctxLeft.drawImage(img, 0, 0, leftWidth, height, 0, 0, leftWidth, height);
-
-        // Crear canvas derecho
-        const canvasRight = document.createElement('canvas');
-        const ctxRight = canvasRight.getContext('2d');
-        const rightWidth = img.naturalWidth - leftWidth;
-        const sourceXRight = leftWidth;
-        canvasRight.width = rightWidth;
-        canvasRight.height = height;
-        ctxRight.drawImage(img, sourceXRight, 0, rightWidth, height, 0, 0, rightWidth, height);
-        console.log("Mitades dibujadas en canvas");
-
-        // Convertir canvas a Blobs y luego a Object URLs
-        const [blobLeft, blobRight] = await Promise.all([
-            canvasToBlob(canvasLeft, 'image/jpeg'),
-            canvasToBlob(canvasRight, 'image/jpeg')
-        ]);
-        console.log("Blobs creados");
-
-        let leftBlobURL = null;
-        let rightBlobURL = null;
-        try {
-          leftBlobURL = URL.createObjectURL(blobLeft);
-          objectURLsToRevoke.push(leftBlobURL);
-          rightBlobURL = URL.createObjectURL(blobRight);
-          objectURLsToRevoke.push(rightBlobURL);
-          console.log("Blob URLs creados:", leftBlobURL, rightBlobURL);
-        } catch (error) {
-          console.error("Error creando Object URL para los blobs:", error);
-          alert("Error al procesar las imágenes divididas.");
-          resetUI(); return;
-        }
-
-        // Asignar URLs a las imágenes del visor
-        leftImage.src = leftBlobURL;
-        rightImage.src = rightBlobURL;
-
-        console.log("Mostrando visor de imágenes...");
-        resetViewerState(); // Resetea zoom/pan
-        imageViewer.style.display = 'block'; // Mostrar el visor
-        mainInterface.style.display = 'none'; // Asegurar que la cámara esté oculta
-        initialMenu.classList.add('hidden'); // Asegurar que el menú esté oculto
-
-      } catch (error) {
-        console.error("Error durante la división de la imagen:", error);
-        alert("Error al procesar la imagen: " + error.message);
-        resetUI();
-      } finally {
-          // Revocar la URL del archivo original si ya no se necesita
-          // URL.revokeObjectURL(originalFileURL); // Cuidado: si hay error antes, puede que no esté definida
-      }
-    };
-    img.onerror = function(e) {
-      console.error("Error al cargar la imagen fuente desde:", originalFileURL, e);
-      alert('Error al cargar la imagen seleccionada.');
-      resetUI();
-    };
-    console.log("Asignando URL de imagen fuente a img.src");
-    img.src = originalFileURL; // Inicia la carga de la imagen
+      const img = new Image();
+      img.onload = async () => { /* ... (resto del código de división sin cambios)... */
+          console.log("Imagen fuente cargada:", img.naturalWidth, "x", img.naturalHeight);
+          if (img.naturalWidth < 2) { alert("Imagen muy estrecha."); resetUI(); return; }
+          try {
+              const canvasLeft = document.createElement('canvas'); /*...*/ const canvasRight = document.createElement('canvas'); /*...*/
+              const [blobLeft, blobRight] = await Promise.all([ canvasToBlob(canvasLeft, 'image/jpeg'), canvasToBlob(canvasRight, 'image/jpeg') ]);
+              let leftBlobURL = null; let rightBlobURL = null;
+              try { leftBlobURL = URL.createObjectURL(blobLeft); objectURLsToRevoke.push(leftBlobURL); rightBlobURL = URL.createObjectURL(blobRight); objectURLsToRevoke.push(rightBlobURL); }
+              catch (error) { console.error("Error creando URL blobs:", error); alert("Error procesando imágenes divididas."); resetUI(); return; }
+              leftImage.src = leftBlobURL; rightImage.src = rightBlobURL;
+              console.log("Mostrando visor...");
+              resetViewerState();
+              showScreen('imageViewer'); // Mostrar el visor
+          } catch (error) { console.error("Error división imagen:", error); alert("Error procesando imagen: " + error.message); resetUI(); }
+      };
+      img.onerror = (e) => { console.error("Error cargando imagen fuente:", e); alert('Error cargando imagen.'); resetUI(); };
+      img.src = originalFileURL;
   }
 
-  // --- Manejo Táctil Visor (Listeners en imageViewer) ---
-  function getDistance(touches) { /* ... sin cambios ... */ if (touches.length < 2) return 0; const dx = touches[0].clientX - touches[1].clientX; const dy = touches[0].clientY - touches[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
-  function getMidpoint(touches) { /* ... sin cambios ... */ if (touches.length < 2) return { x: 0, y: 0}; return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
+  // --- Manejo Táctil Visor ---
+  /* ... (Código de touchstart, touchmove, touchend sin cambios) ... */
   imageViewer.addEventListener('touchstart', (e) => { e.preventDefault(); const touches = e.touches; if (touches.length === 1) { isPanning = true; isZooming = false; startX = touches[0].clientX; startY = touches[0].clientY; initialTranslateX = currentTranslateX; initialTranslateY = currentTranslateY; } else if (touches.length >= 2) { isZooming = true; isPanning = false; initialPinchDistance = getDistance(touches); initialTranslateX = currentTranslateX; initialTranslateY = currentTranslateY; } }, { passive: false });
   imageViewer.addEventListener('touchmove', (e) => { e.preventDefault(); const touches = e.touches; if (isPanning && touches.length === 1) { const dx = touches[0].clientX - startX; const dy = touches[0].clientY - startY; currentTranslateX = initialTranslateX + dx; currentTranslateY = initialTranslateY + dy; applyTransform(); } else if (isZooming && touches.length >= 2) { const currentDistance = getDistance(touches); if (initialPinchDistance <= 0) { initialPinchDistance = currentDistance; if (initialPinchDistance <= 0) return; } const scaleRatio = currentDistance / initialPinchDistance; let potentialNewScale = currentScale * scaleRatio; potentialNewScale = Math.max(1, Math.min(potentialNewScale, 10)); currentScale = potentialNewScale; initialPinchDistance = currentDistance; applyTransform(); } }, { passive: false });
   imageViewer.addEventListener('touchend', (e) => { const touches = e.touches; if (touches.length < 2) { isZooming = false; } if (touches.length < 1) { isPanning = false; } else if (touches.length === 1) { if (!isPanning) { isPanning = true; isZooming = false; startX = touches[0].clientX; startY = touches[0].clientY; initialTranslateX = currentTranslateX; initialTranslateY = currentTranslateY; } } if (!isZooming) { initialPinchDistance = 0; } });
 
   // --- Event Listeners Botones ---
 
-  // Botones del Menú Inicial
+  // Menú Inicial
   initialStartBtn.onclick = requestPermissionAndStart;
-  initialVisualizeBtn.onclick = () => {
-      // Ocultar menú inmediatamente al hacer clic, aunque handleFileSelect también lo hace
-      // initialMenu.classList.add('hidden'); // Opcional aquí
-      fileInput.click(); // Abre el selector de archivos
-  };
-
-  // Input de archivo
+  initialVisualizeBtn.onclick = () => { fileInput.click(); };
   fileInput.onchange = handleFileSelect;
 
-  // Botones de Captura
+  // Botones Cámara
   takeFirstPhotoBtn.onclick = () => {
-      triggerFlash();
-      firstImageData = takePhoto();
-      if (firstImageData) {
-          progress.innerText = "Mueve ~5cm der.";
-          takeFirstPhotoBtn.style.display = 'none';
-          takeSecondPhotoBtn.style.display = 'block';
-      } else {
-          // Manejar error de captura si takePhoto devolvió null
-          console.error("Fallo al tomar la primera foto.");
-          // Podrías resetear o mostrar un mensaje más específico
-      }
+    triggerFlash();
+    firstImageData = takePhoto();
+    if (firstImageData) {
+      progress.innerText = "Mueve ~5cm der.";
+      takeFirstPhotoBtn.style.display = 'none';
+      takeSecondPhotoBtn.style.display = 'block';
+    } else { console.error("Fallo 1ra foto."); }
   };
+
   takeSecondPhotoBtn.onclick = () => {
-      triggerFlash();
-      const secondImageData = takePhoto();
-      if (!firstImageData || !secondImageData) {
-          console.error("Faltan datos de imagen para combinar.");
-          progress.innerText = "Error al capturar";
-          // Podrías intentar resetear solo la segunda captura o la UI completa
-          // takeFirstPhotoBtn.style.display = 'block';
-          // takeSecondPhotoBtn.style.display = 'none';
-          // progress.innerText = "Error. Intenta la 1ra foto de nuevo.";
-          return;
-      }
+    triggerFlash(); // <-- FLASH AÑADIDO AQUÍ
+    const secondImageData = takePhoto();
+    if (!firstImageData || !secondImageData) {
+      console.error("Faltan datos de imagen para combinar.");
+      progress.innerText = "Error. Intenta de nuevo.";
+      takeFirstPhotoBtn.style.display = 'none'; // O quizás volver a la primera?
+      takeSecondPhotoBtn.style.display = 'block';
+      return;
+    }
 
-      progress.innerText = "Procesando...";
-      takeSecondPhotoBtn.style.display = 'none'; // Ocultar botón mientras procesa
+    // Ocultar interfaz de cámara y mostrar carga INMEDIATAMENTE
+    showScreen('loadingScreen');
+    // Esconder botones específicos por si acaso
+    takeFirstPhotoBtn.style.display = 'none';
+    takeSecondPhotoBtn.style.display = 'none';
+    progress.innerText = ''; // Limpiar progreso mientras carga
 
-      const img1 = new Image();
-      const img2 = new Image();
+    // Usar setTimeout para asegurar que la UI se actualice ANTES de procesar
+    setTimeout(() => {
+        const img1 = new Image();
+        const img2 = new Image();
+        let img1Loaded = false, img2Loaded = false;
 
-      let img1Loaded = false;
-      let img2Loaded = false;
+        function tryCombineImages() {
+            if (img1Loaded && img2Loaded) {
+                console.log("Combinando imágenes...");
+                const combinedCanvas = document.createElement('canvas');
+                const combinedCtx = combinedCanvas.getContext('2d');
+                if (img1.naturalWidth === 0 || img2.naturalWidth === 0) {
+                    console.error("Dimensiones 0 en imágenes.");
+                    alert("Error al procesar las imágenes capturadas.");
+                    resetUI(); return;
+                }
+                combinedCanvas.width = img1.naturalWidth + img2.naturalWidth;
+                combinedCanvas.height = Math.max(img1.naturalHeight, img2.naturalHeight);
+                combinedCtx.drawImage(img1, 0, 0);
+                combinedCtx.drawImage(img2, img1.naturalWidth, 0);
 
-      function tryCombineImages() {
-          if (img1Loaded && img2Loaded) {
-              console.log("Ambas imágenes cargadas, combinando...");
-              const combinedCanvas = document.createElement('canvas');
-              const combinedCtx = combinedCanvas.getContext('2d');
+                try {
+                   const combinedImageURL = combinedCanvas.toDataURL('image/jpeg');
+                   finalResultImage.src = combinedImageURL; // Poner imagen en la nueva pantalla
+                   showScreen('resultScreen'); // Mostrar pantalla de resultado
+                   // Ya no se necesita el modal
+                } catch (e) {
+                    console.error("Error generando Data URL final:", e);
+                    alert("Error al generar la imagen final.");
+                    resetUI();
+                }
+            }
+        }
 
-              // Asegurar que ambas imágenes tengan dimensiones válidas
-              if (img1.naturalWidth === 0 || img1.naturalHeight === 0 || img2.naturalWidth === 0 || img2.naturalHeight === 0) {
-                  console.error("Una o ambas imágenes tienen dimensiones 0.");
-                  progress.innerText = "Error al procesar";
-                   // Opcional: volver a mostrar el botón de segunda foto
-                   // takeSecondPhotoBtn.style.display = 'block';
-                  return;
-              }
+        img1.onload = () => { console.log("Img1 loaded"); img1Loaded = true; tryCombineImages(); };
+        img2.onload = () => { console.log("Img2 loaded"); img2Loaded = true; tryCombineImages(); };
+        img1.onerror = () => { console.error("Error cargando img1"); alert("Error procesando foto 1."); resetUI(); };
+        img2.onerror = () => { console.error("Error cargando img2"); alert("Error procesando foto 2."); resetUI(); };
 
-              combinedCanvas.width = img1.naturalWidth + img2.naturalWidth;
-              combinedCanvas.height = Math.max(img1.naturalHeight, img2.naturalHeight);
-
-              combinedCtx.drawImage(img1, 0, 0);
-              combinedCtx.drawImage(img2, img1.naturalWidth, 0);
-
-              try {
-                 const combinedImageURL = combinedCanvas.toDataURL('image/jpeg');
-                 resultImage.src = combinedImageURL;
-                 resultModal.style.display = 'flex'; // Mostrar modal con resultado
-                 progress.innerText = ''; // Limpiar texto de progreso
-                 // stopCamera(); // Detener cámara al mostrar resultado
-                 mainInterface.style.display = 'none'; // Ocultar interfaz cámara
-              } catch (e) {
-                  console.error("Error al convertir canvas combinado a Data URL:", e);
-                  progress.innerText = "Error al generar imagen final";
-                  // takeSecondPhotoBtn.style.display = 'block'; // Permitir reintentar?
-              }
-          }
-      }
-
-      img1.onload = () => { console.log("Img1 loaded"); img1Loaded = true; tryCombineImages(); };
-      img2.onload = () => { console.log("Img2 loaded"); img2Loaded = true; tryCombineImages(); };
-      img1.onerror = () => { console.error("Error cargando img1 desde DataURL"); progress.innerText = "Error Proc. 1";};
-      img2.onerror = () => { console.error("Error cargando img2 desde DataURL"); progress.innerText = "Error Proc. 2";};
-
-      img1.src = firstImageData;
-      img2.src = secondImageData;
+        img1.src = firstImageData;
+        img2.src = secondImageData;
+    }, 100); // Pequeño retraso para renderizar pantalla de carga
   };
 
-  // Botones del Modal de Resultado
-  closeResultModalBtn.onclick = resetUI;
-  saveBtn.onclick = () => {
+  // Botones Pantalla Resultado
+  saveResultBtn.onclick = () => {
       const link = document.createElement('a');
-      link.href = resultImage.src;
-      link.download = `foto-3d-captura-${Date.now()}.jpg`; // Nombre de archivo único
+      link.href = finalResultImage.src;
+      link.download = `foto-3d-moderna-${Date.now()}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
   };
-  // Cerrar modal si se hace clic fuera del contenido
-  window.onclick = (event) => {
-      if (event.target == resultModal) {
-          resetUI();
-      }
-  };
+  resetFromResulBtn.onclick = resetUI; // Llama a la función de reseteo general
 
-  // Botones del Visor de Imágenes
+  // Botones Visor
   closeViewerBtn.onclick = resetUI;
-  fullscreenBtn.addEventListener('click', () => {
-      const elemento = imageViewer; // El elemento a "maximizar"
+  fullscreenBtn.addEventListener('click', () => { /* ... (sin cambios) ... */
+      const elemento = imageViewer;
       if (elemento.classList.contains('fullscreen-simulated')) {
-          elemento.classList.remove('fullscreen-simulated');
-          fullscreenBtn.textContent = "Ampliar"; // Restaurar texto
-          console.log("Saliendo de fullscreen simulado");
+          elemento.classList.remove('fullscreen-simulated'); fullscreenBtn.textContent = "Ampliar"; console.log("Saliendo fullscreen simulado");
       } else {
-          elemento.classList.add('fullscreen-simulated');
-          fullscreenBtn.textContent = "Reducir"; // Cambiar texto
-          console.log("Entrando a fullscreen simulado");
+          elemento.classList.add('fullscreen-simulated'); fullscreenBtn.textContent = "Reducir"; console.log("Entrando fullscreen simulado");
       }
   });
 
-  // --- Inicializar UI al cargar ---
-  // Asegurarse de que la UI esté en el estado inicial correcto al cargar la página
+  // --- Inicializar UI ---
   document.addEventListener('DOMContentLoaded', () => {
-    resetUI(); // Llama a resetUI para establecer el estado inicial
+    showScreen('initialMenu'); // Asegura que el menú inicial sea lo primero visible
     console.log("DOM Cargado, UI inicializada.");
   });
 
