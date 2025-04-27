@@ -9,16 +9,64 @@
 
   <style>
     /* Reset y Estilos Base Modernizados */
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-    html { height: -webkit-fill-available; }
-    body { height: 100dvh; min-height: -webkit-fill-available; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; background-color: #000; color: #fff; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; position: relative; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html {
+      height: -webkit-fill-available;
+    }
+
+    body {
+      height: 100dvh;
+      min-height: -webkit-fill-available;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      background-color: #000;
+      color: #fff;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      position: relative;
+    }
 
     /* Estilos Comunes para Pantallas */
-    .screen { display: none; flex-direction: column; justify-content: center; align-items: center; height: 100dvh; min-height: -webkit-fill-available; width: 100%; position: fixed; top: 0; left: 0; padding: 25px; z-index: 500; opacity: 1; visibility: visible; transition: opacity 0.4s ease-out, visibility 0.4s ease-out; }
-    .screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.3s ease-in, visibility 0.3s ease-in; }
+    .screen {
+      display: none; /* Ocultas por defecto */
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100dvh;
+      min-height: -webkit-fill-available;
+      width: 100%;
+      position: fixed;
+      top: 0;
+      left: 0;
+      padding: 25px;
+      z-index: 500;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.4s ease-out, visibility 0.4s ease-out;
+    }
+
+    .screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.3s ease-in, visibility 0.3s ease-in;
+    }
 
     /* Estilos Menú Inicial */
-    #initialMenu { background: linear-gradient(145deg, #051421, #002a4d); }
+    #initialMenu {
+      background: linear-gradient(145deg, #051421, #002a4d);
+      /* display: flex; <- Controlado por showScreen */
+    }
     .initial-button { display: inline-flex; align-items: center; justify-content: center; gap: 12px; border: none; border-radius: 50px; font-size: 1.1em; font-weight: 600; cursor: pointer; text-decoration: none; margin: 12px 0; transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.3s ease; will-change: transform, box-shadow; }
     .initial-button svg { width: 22px; height: 22px; }
     #initialStartBtn { background-color: #0A84FF; color: white; padding: 18px 40px; box-shadow: 0 5px 20px rgba(10, 132, 255, 0.3); }
@@ -42,13 +90,13 @@
     #takeFirstPhoto:active, #takeSecondPhoto:active { background-color: #e5e5e5; border-color: #e5e5e5; transform: scale(0.95); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); }
     #canvas, #photoPreview, #fileInput { display: none; }
 
-    /* Estilos Pantalla de Carga (Sólo para procesar 2da foto) */
+    /* Estilos Pantalla de Carga */
     #loadingScreen { background-color: rgba(0, 0, 0, 0.85); z-index: 600; color: #eee; }
     .loader { border: 6px solid #f3f3f3; border-top: 6px solid #0A84FF; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 25px; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     #loadingText { font-size: 1.1em; font-weight: 500; }
 
-    /* Estilos Pantalla de Resultado (Después de tomar fotos) */
+    /* Estilos Pantalla de Resultado */
     #resultScreen { background: linear-gradient(145deg, #051421, #002a4d); z-index: 550; }
     #finalResultImage { display: block; max-width: 85%; max-height: 60vh; height: auto; margin-bottom: 30px; border-radius: 12px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
     #resultActions { display: flex; gap: 15px; }
@@ -58,7 +106,7 @@
     #resetFromResulBtn svg { stroke: #fff; }
     #resetFromResulBtn:hover { background-color: rgba(118, 118, 128, 0.5); }
 
-    /* Estilos del Visor de Imágenes (Para visualizar fotos) */
+    /* Estilos del Visor de Imágenes */
     #imageViewer { background-color: #000; z-index: 2000; touch-action: none; padding: 0; }
     #splitViewContainer { display: flex; width: 100%; height: 100%; }
     .image-half-container { width: 50%; height: 100%; overflow: hidden; position: relative; }
@@ -157,7 +205,13 @@
   const resetFromResulBtn = document.getElementById('resetFromResulBtn');
 
    // Objeto para acceder a las pantallas
-  const screens = { 'initialMenu': initialMenu, 'mainInterface': mainInterface, 'loadingScreen': loadingScreen, 'resultScreen': resultScreen, 'imageViewer': imageViewer };
+  const screens = {
+    'initialMenu': initialMenu,
+    'mainInterface': mainInterface,
+    'loadingScreen': loadingScreen,
+    'resultScreen': resultScreen,
+    'imageViewer': imageViewer
+  };
 
   // --- Estado ---
   let firstImageData = null;
@@ -171,37 +225,134 @@
   let initialTranslateX = 0, initialTranslateY = 0;
 
   // --- Funciones Auxiliares ---
-  function revokePreviousObjectURLs() { /* ... (sin cambios) ... */ }
-  function triggerFlash() { /* ... (sin cambios) ... */ }
-  flashOverlay.addEventListener('animationend', () => { /* ... (sin cambios) ... */ });
+  function revokePreviousObjectURLs() {
+      if (objectURLsToRevoke.length > 0) {
+        console.log("Revocando", objectURLsToRevoke.length, "Object URLs anteriores.");
+        objectURLsToRevoke.forEach(url => { try { URL.revokeObjectURL(url); } catch(e){ console.warn("Error revocando URL:", url, e)} });
+        objectURLsToRevoke = [];
+      }
+  }
+  function triggerFlash() {
+      flashOverlay.style.display = 'block';
+      flashOverlay.classList.add('flash');
+  }
+  flashOverlay.addEventListener('animationend', () => {
+      flashOverlay.classList.remove('flash');
+      flashOverlay.style.display = 'none';
+  });
 
-  // --- Función para cambiar pantalla visible ---
-  function showScreen(screenIdToShow) { /* ... (sin cambios respecto a la última versión) ... */
+  // --- Función para cambiar pantalla visible (Refinada) ---
+  function showScreen(screenIdToShow) {
     console.log(`showScreen: Intentando mostrar '${screenIdToShow}'`);
     Object.keys(screens).forEach(key => {
       const screenElement = screens[key];
       if (screenElement) {
         const isTarget = key === screenIdToShow;
+        // Usar 'flex' como display por defecto para contenedores principales
         const displayStyle = isTarget ? 'flex' : 'none';
-        if (screenElement.style.display !== displayStyle) { screenElement.style.display = displayStyle; }
-        if (isTarget) { screenElement.classList.remove('hidden'); }
-        else { screenElement.classList.add('hidden'); }
-      } else { console.warn(`showScreen: Elemento '${key}' no encontrado.`); }
+
+        if (screenElement.style.display !== displayStyle) {
+           screenElement.style.display = displayStyle;
+        }
+        // Gestionar clase 'hidden' para transiciones de opacidad
+        if (isTarget) {
+          screenElement.classList.remove('hidden');
+          // console.log(`showScreen: Mostrando ${key}`);
+        } else {
+          screenElement.classList.add('hidden');
+          // console.log(`showScreen: Ocultando ${key}`);
+        }
+      } else {
+        console.warn(`showScreen: Elemento para key '${key}' no encontrado.`);
+      }
     });
   }
 
+
   // --- Funciones Cámara ---
-  function startCamera() { /* ... (sin cambios) ... */ }
-  function stopCamera() { /* ... (sin cambios) ... */ }
-  function takePhoto() { /* ... (sin cambios) ... */ }
-  function requestPermissionAndStart() { /* ... (sin cambios) ... */ }
+  function startCamera() {
+    const constraints = { video: { facingMode: "environment" } };
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then(mediaStream => {
+        stream = mediaStream;
+        video.srcObject = stream;
+        video.play();
+
+        // --- Callback cuando el video está listo ---
+        video.onloadedmetadata = () => {
+           console.log(">>> video.onloadedmetadata: Fired!"); // LOG AÑADIDO
+           if (takeFirstPhotoBtn) {
+               takeFirstPhotoBtn.style.display = 'block'; // Mostrar primer botón
+               console.log(">>> video.onloadedmetadata: takeFirstPhotoBtn display set to block"); // LOG AÑADIDO
+           } else { console.error(">>> video.onloadedmetadata: takeFirstPhotoBtn no encontrado!"); }
+           if (takeSecondPhotoBtn) { takeSecondPhotoBtn.style.display = 'none'; } // Ocultar segundo
+           if (controlsContainer) {
+               controlsContainer.style.display = 'flex'; // Mostrar barra de controles
+               console.log(">>> video.onloadedmetadata: controlsContainer display set to flex"); // LOG AÑADIDO
+           } else { console.error(">>> video.onloadedmetadata: controlsContainer no encontrado!"); }
+           if (progress) { progress.innerText = "Toma la primera foto"; }
+           else { console.error(">>> video.onloadedmetadata: progress no encontrado!"); }
+        };
+
+        // --- Manejo de errores del video ---
+        video.onerror = (e) => {
+           console.error(">>> Error en elemento video:", e);
+           alert("Ocurrió un error al cargar el video de la cámara.");
+           resetUI();
+        };
+
+      })
+      .catch(err => { // --- Fallback si falla environment ---
+        console.error('Error cámara (environment):', err);
+        if (err.name === "OverconstrainedError" || err.name === "NotFoundError") {
+            console.log(">>> Intentando con cualquier cámara...");
+            navigator.mediaDevices.getUserMedia({ video: true })
+              .then(mediaStream => {
+                  stream = mediaStream; video.srcObject = stream; video.play();
+                  // Callback cuando el video (fallback) está listo
+                  video.onloadedmetadata = () => {
+                      console.log(">>> video.onloadedmetadata (fallback): Fired!"); // LOG AÑADIDO
+                      if (takeFirstPhotoBtn) { takeFirstPhotoBtn.style.display = 'block'; console.log(">>> video.onloadedmetadata (fallback): takeFirstPhotoBtn display set to block");} else { console.error(">>> video.onloadedmetadata (fallback): takeFirstPhotoBtn no encontrado!"); }
+                      if (takeSecondPhotoBtn) { takeSecondPhotoBtn.style.display = 'none'; }
+                      if (controlsContainer) { controlsContainer.style.display = 'flex'; console.log(">>> video.onloadedmetadata (fallback): controlsContainer display set to flex"); } else { console.error(">>> video.onloadedmetadata (fallback): controlsContainer no encontrado!"); }
+                      if (progress) { progress.innerText = "Toma la primera foto"; } else { console.error(">>> video.onloadedmetadata (fallback): progress no encontrado!"); }
+                   };
+                   video.onerror = (e) => { console.error(">>> Error en elemento video (fallback):", e); alert("Ocurrió un error al cargar el video."); resetUI(); };
+               })
+              .catch(err2 => { console.error('>>> Error cámara (fallback):', err2); alert('No se pudo acceder a ninguna cámara: ' + err2.message); resetUI(); });
+        } else { alert('No se pudo acceder a la cámara: ' + err.message); resetUI(); }
+      });
+   }
+
+  function stopCamera() { if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; video.srcObject = null; console.log("Cámara detenida."); } }
+  function takePhoto() {
+      if (!video.videoWidth || !video.videoHeight || !video.srcObject) { // Añadida verificación de srcObject
+         console.error(">>> takePhoto: Video no listo o stream no activo. Width:", video.videoWidth, "Height:", video.videoHeight, "Stream:", video.srcObject);
+         progress.innerText = "Error: Cámara no lista";
+         return null;
+      }
+      const ctx = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      try {
+         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+         console.log(">>> takePhoto: Foto capturada en canvas");
+         return canvas.toDataURL('image/jpeg');
+      }
+      catch (e) { console.error(">>> takePhoto: Error al dibujar imagen:", e); progress.innerText = "Error al capturar"; return null; }
+  }
+  function requestPermissionAndStart() { console.log("Iniciando cámara..."); showScreen('mainInterface'); startCamera(); }
 
   // --- Reset UI ---
-  function resetUI() { /* ... (sin cambios respecto a la última versión) ... */
+  function resetUI() {
     console.log("Reseteando UI...");
     stopCamera();
     revokePreviousObjectURLs();
-    showScreen('initialMenu'); // Mostrar menú inicial y ocultar las demás
+
+    // Mostrar menú inicial y ocultar todo lo demás
+    showScreen('initialMenu');
+
+    // Resetear estados/elementos específicos
     takeFirstPhotoBtn.style.display = 'none';
     takeSecondPhotoBtn.style.display = 'none';
     progress.innerText = '';
@@ -213,14 +364,15 @@
     flashOverlay.classList.remove('flash');
     resetViewerState();
     fileInput.value = null;
-    if(finalResultImage) finalResultImage.src = "";
+    if(finalResultImage) finalResultImage.src = ""; // Limpiar imagen resultado
+
     console.log("UI Reseteada.");
   }
 
   // --- Funciones Visor ---
-  function resetViewerState() { /* ... (sin cambios) ... */ }
-  function applyTransform() { /* ... (sin cambios) ... */ }
-  function canvasToBlob(canvas, mimeType = 'image/jpeg', quality = 0.85) { /* ... (sin cambios) ... */ }
+  function resetViewerState() { currentScale = 1; currentTranslateX = 0; currentTranslateY = 0; applyTransform(); }
+  function applyTransform() { const tfm = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`; leftImage.style.transform = tfm; rightImage.style.transform = tfm; }
+  function canvasToBlob(canvas, mimeType = 'image/jpeg', quality = 0.85) { return new Promise((resolve, reject) => { if (!canvas || typeof canvas.toBlob !== 'function') { reject(new Error("Canvas inválido o toBlob() no soportado")); return; } canvas.toBlob(blob => { if (blob) { resolve(blob); } else { reject(new Error("canvas.toBlob() falló")); } }, mimeType, quality); }); }
 
   // --- handleFileSelect (Visualizar Fotos - SIN pantalla de carga) ---
   async function handleFileSelect(event) {
@@ -233,7 +385,6 @@
 
       console.log("handleFileSelect: Archivo válido:", file.name);
       // **NO mostrar pantalla de carga aquí**
-      // showScreen('loadingScreen'); <-- ELIMINADO
 
       console.log("handleFileSelect: Procesando archivo...");
       revokePreviousObjectURLs();
@@ -250,7 +401,6 @@
               if (img.naturalWidth < 2) { alert("Imagen muy estrecha."); resetUI(); return; }
 
               try {
-                  // ... (crear canvasLeft y canvasRight, dibujar mitades) ...
                   const canvasLeft = document.createElement('canvas');
                   const ctxLeft = canvasLeft.getContext('2d');
                   const leftWidth = Math.floor(img.naturalWidth / 2);
@@ -267,7 +417,6 @@
                   console.log("handleFileSelect: img.onload - Mitades dibujadas");
 
 
-                  // ... (crear blobs y blob URLs) ...
                   const [blobLeft, blobRight] = await Promise.all([
                       canvasToBlob(canvasLeft, 'image/jpeg'),
                       canvasToBlob(canvasRight, 'image/jpeg')
@@ -307,11 +456,16 @@
       }
   }
 
+
   // --- Manejo Táctil Visor ---
-  /* ... (Código de touchstart, touchmove, touchend sin cambios) ... */
-  imageViewer.addEventListener('touchstart', (e) => { /*...*/ }, { passive: false });
-  imageViewer.addEventListener('touchmove', (e) => { /*...*/ }, { passive: false });
-  imageViewer.addEventListener('touchend', (e) => { /*...*/ });
+  // Funciones auxiliares para touch
+  function getDistance(touches) { if (touches.length < 2) return 0; const dx = touches[0].clientX - touches[1].clientX; const dy = touches[0].clientY - touches[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
+  function getMidpoint(touches) { if (touches.length < 2) return { x: 0, y: 0}; return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
+  // Listeners
+  imageViewer.addEventListener('touchstart', (e) => { e.preventDefault(); const touches = e.touches; if (touches.length === 1) { isPanning = true; isZooming = false; startX = touches[0].clientX; startY = touches[0].clientY; initialTranslateX = currentTranslateX; initialTranslateY = currentTranslateY; } else if (touches.length >= 2) { isZooming = true; isPanning = false; initialPinchDistance = getDistance(touches); initialTranslateX = currentTranslateX; initialTranslateY = currentTranslateY; } }, { passive: false });
+  imageViewer.addEventListener('touchmove', (e) => { e.preventDefault(); const touches = e.touches; if (isPanning && touches.length === 1) { const dx = touches[0].clientX - startX; const dy = touches[0].clientY - startY; currentTranslateX = initialTranslateX + dx; currentTranslateY = initialTranslateY + dy; applyTransform(); } else if (isZooming && touches.length >= 2) { const currentDistance = getDistance(touches); if (initialPinchDistance <= 0) { initialPinchDistance = currentDistance; if (initialPinchDistance <= 0) return; } const scaleRatio = currentDistance / initialPinchDistance; let potentialNewScale = currentScale * scaleRatio; potentialNewScale = Math.max(1, Math.min(potentialNewScale, 10)); currentScale = potentialNewScale; initialPinchDistance = currentDistance; applyTransform(); } }, { passive: false });
+  imageViewer.addEventListener('touchend', (e) => { const touches = e.touches; if (touches.length < 2) { isZooming = false; } if (touches.length < 1) { isPanning = false; } else if (touches.length === 1) { if (!isPanning) { isPanning = true; isZooming = false; startX = touches[0].clientX; startY = touches[0].clientY; initialTranslateX = currentTranslateX; initialTranslateY = currentTranslateY; } } if (!isZooming) { initialPinchDistance = 0; } });
+
 
   // --- Event Listeners Botones ---
 
@@ -322,63 +476,78 @@
 
   // Botones Cámara
   takeFirstPhotoBtn.onclick = () => {
-    triggerFlash();
-    firstImageData = takePhoto();
-    if (firstImageData) {
-      progress.innerText = "Mueve ~5cm der.";
-      takeFirstPhotoBtn.style.display = 'none';
-      takeSecondPhotoBtn.style.display = 'block';
-    } else { console.error("Fallo 1ra foto."); }
+      console.log(">>> takeFirstPhotoBtn: Clicked");
+      triggerFlash();
+      firstImageData = takePhoto(); // Llama a la función que ahora tiene más logs
+      if (firstImageData) {
+          console.log(">>> takeFirstPhotoBtn: Primera foto OK");
+          progress.innerText = "Mueve ~5cm der.";
+          takeFirstPhotoBtn.style.display = 'none';
+          takeSecondPhotoBtn.style.display = 'block';
+      } else {
+          console.error(">>> takeFirstPhotoBtn: Falló takePhoto()");
+      }
   };
 
   takeSecondPhotoBtn.onclick = () => {
-    triggerFlash(); // Flash para la segunda foto
-    const secondImageData = takePhoto();
-    if (!firstImageData || !secondImageData) {
-      console.error("Faltan datos imagen."); progress.innerText = "Error.";
-      // Podríamos querer resetear el estado para tomar la segunda foto de nuevo
-      takeFirstPhotoBtn.style.display = 'none';
-      takeSecondPhotoBtn.style.display = 'block';
-      return;
-    }
+      console.log(">>> takeSecondPhotoBtn: Clicked");
+      triggerFlash(); // Flash para la segunda foto
+      const secondImageData = takePhoto(); // Llama a la función con logs
+      if (!firstImageData || !secondImageData) {
+          console.error(">>> takeSecondPhotoBtn: Faltan datos imagen o falló takePhoto(). firstImageData:", !!firstImageData, "secondImageData:", !!secondImageData);
+          progress.innerText = "Error. Intenta de nuevo.";
+          return; // Salir si falla
+      }
 
-    // Mostrar pantalla de carga ANTES de procesar
-    showScreen('loadingScreen');
-    takeFirstPhotoBtn.style.display = 'none'; // Ocultar botones cámara
-    takeSecondPhotoBtn.style.display = 'none';
-    progress.innerText = '';
+      console.log(">>> takeSecondPhotoBtn: Segunda foto OK. Mostrando carga...");
+      showScreen('loadingScreen');
+      takeFirstPhotoBtn.style.display = 'none'; // Ocultar botones cámara
+      takeSecondPhotoBtn.style.display = 'none';
+      progress.innerText = '';
 
-    // Procesar después de un breve delay para que se vea la carga
-    setTimeout(() => {
-        const img1 = new Image(); const img2 = new Image();
-        let img1Loaded = false, img2Loaded = false;
+      // Procesar después de un breve delay
+      setTimeout(() => {
+          console.log(">>> takeSecondPhotoBtn setTimeout: Iniciando procesamiento de imágenes");
+          const img1 = new Image(); const img2 = new Image();
+          let img1Loaded = false, img2Loaded = false;
 
-        function tryCombineImages() {
-            if (img1Loaded && img2Loaded) {
-                console.log("Combinando imágenes...");
-                const combinedCanvas = document.createElement('canvas');
-                const combinedCtx = combinedCanvas.getContext('2d');
-                if (img1.naturalWidth === 0 || img2.naturalWidth === 0) {
-                    console.error("Dimensiones 0."); alert("Error procesando imágenes."); resetUI(); return;
-                }
-                combinedCanvas.width = img1.naturalWidth + img2.naturalWidth;
-                combinedCanvas.height = Math.max(img1.naturalHeight, img2.naturalHeight);
-                combinedCtx.drawImage(img1, 0, 0);
-                combinedCtx.drawImage(img2, img1.naturalWidth, 0);
+          function tryCombineImages() {
+              if (img1Loaded && img2Loaded) {
+                  console.log(">>> tryCombineImages: Ambas imágenes cargadas. Combinando...");
+                  const combinedCanvas = document.createElement('canvas');
+                  const combinedCtx = combinedCanvas.getContext('2d');
+                  if (img1.naturalWidth === 0 || img2.naturalWidth === 0) {
+                      console.error(">>> tryCombineImages: Dimensiones 0."); alert("Error procesando imágenes."); resetUI(); return;
+                  }
+                  combinedCanvas.width = img1.naturalWidth + img2.naturalWidth;
+                  combinedCanvas.height = Math.max(img1.naturalHeight, img2.naturalHeight);
+                  combinedCtx.drawImage(img1, 0, 0);
+                  combinedCtx.drawImage(img2, img1.naturalWidth, 0);
+                  console.log(">>> tryCombineImages: Imágenes combinadas en canvas.");
+                  try {
+                    const combinedImageURL = combinedCanvas.toDataURL('image/jpeg');
+                    finalResultImage.src = combinedImageURL;
+                    console.log(">>> tryCombineImages: URL de resultado generada. Iniciando delay para mostrar resultado."); // Log actualizado
 
-                try {
-                   const combinedImageURL = combinedCanvas.toDataURL('image/jpeg');
-                   finalResultImage.src = combinedImageURL;
-                   showScreen('resultScreen'); // Mostrar pantalla de resultado
-                } catch (e) { console.error("Error generando URL final:", e); alert("Error generando imagen final."); resetUI(); }
-            }
-        }
-        img1.onload = () => { console.log("Img1 loaded"); img1Loaded = true; tryCombineImages(); };
-        img2.onload = () => { console.log("Img2 loaded"); img2Loaded = true; tryCombineImages(); };
-        img1.onerror = () => { console.error("Error cargando img1"); alert("Error procesando foto 1."); resetUI(); };
-        img2.onerror = () => { console.error("Error cargando img2"); alert("Error procesando foto 2."); resetUI(); };
-        img1.src = firstImageData; img2.src = secondImageData;
-    }, 100); // Delay
+                    const loadingDuration = 1500;
+
+                    setTimeout(() => {
+                        console.log(">>> tryCombineImages: Fin del delay. Mostrando pantalla de resultado.");
+                        showScreen('resultScreen'); // Mostrar resultado DESPUÉS del delay
+                    }, loadingDuration);
+
+                } catch (e) { console.error(">>> tryCombineImages: Error generando URL final:", e); alert("Error generando imagen final."); resetUI(); }
+              }
+          }
+          img1.onload = () => { console.log(">>> img1.onload"); img1Loaded = true; tryCombineImages(); };
+          img2.onload = () => { console.log(">>> img2.onload"); img2Loaded = true; tryCombineImages(); };
+          img1.onerror = () => { console.error(">>> Error cargando img1"); alert("Error procesando foto 1."); resetUI(); };
+          img2.onerror = () => { console.error(">>> Error cargando img2"); alert("Error procesando foto 2."); resetUI(); };
+
+          console.log(">>> takeSecondPhotoBtn setTimeout: Asignando src a img1 y img2");
+          img1.src = firstImageData;
+          img2.src = secondImageData;
+      }, 100); // Delay
   };
 
   // Botones Pantalla Resultado
@@ -394,11 +563,18 @@
 
   // Botones Visor
   closeViewerBtn.onclick = resetUI;
-  fullscreenBtn.addEventListener('click', () => { /* ... (sin cambios) ... */ });
+  fullscreenBtn.addEventListener('click', () => {
+      const elemento = imageViewer;
+      if (elemento.classList.contains('fullscreen-simulated')) {
+          elemento.classList.remove('fullscreen-simulated'); fullscreenBtn.textContent = "Ampliar"; console.log("Saliendo fullscreen simulado");
+      } else {
+          elemento.classList.add('fullscreen-simulated'); fullscreenBtn.textContent = "Reducir"; console.log("Entrando fullscreen simulado");
+      }
+  });
 
   // --- Inicializar UI ---
   document.addEventListener('DOMContentLoaded', () => {
-    showScreen('initialMenu');
+    showScreen('initialMenu'); // Mostrar el menú inicial al cargar
     console.log("DOM Cargado, UI inicializada.");
   });
 
